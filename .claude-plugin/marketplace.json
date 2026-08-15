@@ -1,0 +1,29 @@
+{
+  "name": "causaic",
+  "owner": {
+    "name": "Causaic"
+  },
+  "description": "Development-only Causaic contributor and operator plugins.",
+  "plugins": [
+    {
+      "name": "causaic-contributor-dev",
+      "source": "./plugins/causaic-contributor-dev",
+      "description": "Development-only Causaic contributor tools and guided job execution workflows.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Causaic"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "causaic-operator-dev",
+      "source": "./plugins/causaic-operator-dev",
+      "description": "Development-only Causaic operator tools for publication, work management, and artifact validation.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Causaic"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

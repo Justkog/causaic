@@ -1,0 +1,26 @@
+{
+  "name": "causaic-contributor-dev",
+  "version": "0.1.0+codex.20260808140728",
+  "description": "Development-only Causaic contributor tools and guided job execution workflows.",
+  "author": {
+    "name": "Causaic"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Causaic Contributor (Development)",
+    "shortDescription": "Discover and execute Causaic jobs in development.",
+    "longDescription": "Connects Codex to the Causaic development contributor MCP and provides guided cause discovery, job execution, and contribution-history skills.",
+    "developerName": "Causaic",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Use the Causaic contributor development tools to discover, execute, or review a contribution."
+  },
+  "mcpServers": {
+    "causaic-contributor-dev": {
+      "type": "http",
+      "url": "https://compassionate-swordfish-378.eu-west-1.convex.site/mcp/contributor",
+      "oauth_resource": "https://compassionate-swordfish-378.eu-west-1.convex.site/mcp/contributor",
+      "oauth_client_id": "xgWK8b7J0v9LJvhE"
+    }
+  }
+}

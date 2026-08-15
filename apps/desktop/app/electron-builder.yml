@@ -1,0 +1,29 @@
+appId: org.causaic.desktop
+productName: Causaic
+executableName: causaic
+electronVersion: 43.1.1
+asar: true
+npmRebuild: true
+nativeRebuilder: sequential
+buildDependenciesFromSource: true
+npmArgs:
+  - --ignore-workspace
+  - --frozen-lockfile
+  - --ignore-scripts
+asarUnpack:
+  - node_modules/better-sqlite3/**/*
+directories:
+  output: ../dist/desktop
+  buildResources: ../resources
+files:
+  - out/**/*
+extraResources:
+  - from: ../drizzle
+    to: migrations
+publish: null
+win:
+  target:
+    - dir
+linux:
+  target:
+    - dir

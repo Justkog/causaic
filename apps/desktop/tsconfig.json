@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "paths": { "@/*": ["./src/*"] },
+    "types": ["electron-vite/node", "vite/client", "vitest/globals"]
+  },
+  "include": ["src", "electron.vite.config.ts", "vitest.config.ts"]
+}

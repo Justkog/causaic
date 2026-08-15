@@ -1,0 +1,11 @@
+interface:
+  display_name: 'Validate Causaic artifacts'
+  short_description: 'Review and decide submitted Causaic artifacts.'
+  default_prompt: 'Use $validate-causaic-artifacts to review pending Causaic artifacts safely.'
+dependencies:
+  tools:
+    - type: 'mcp'
+      value: 'causaic-operator-dev'
+      description: 'Causaic development operator MCP server'
+      transport: 'streamable_http'
+      url: 'https://compassionate-swordfish-378.eu-west-1.convex.site/mcp/operator'

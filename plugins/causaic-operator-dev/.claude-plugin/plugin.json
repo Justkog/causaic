@@ -1,0 +1,9 @@
+{
+  "name": "causaic-operator-dev",
+  "version": "0.1.0",
+  "description": "Development-only Causaic operator tools for publication, work management, and artifact validation.",
+  "author": {
+    "name": "Causaic"
+  },
+  "mcpServers": "./.claude-plugin/mcp.json"
+}

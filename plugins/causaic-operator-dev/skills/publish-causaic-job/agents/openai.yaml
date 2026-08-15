@@ -1,0 +1,11 @@
+interface:
+  display_name: 'Publish a Causaic job'
+  short_description: 'Configure and publish a valid Causaic job.'
+  default_prompt: 'Use $publish-causaic-job to configure and publish a Causaic job.'
+dependencies:
+  tools:
+    - type: 'mcp'
+      value: 'causaic-operator-dev'
+      description: 'Causaic development operator MCP server'
+      transport: 'streamable_http'
+      url: 'https://compassionate-swordfish-378.eu-west-1.convex.site/mcp/operator'

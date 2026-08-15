@@ -1,0 +1,28 @@
+{
+  "name": "@causaic/runner",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "cli": "node dist/cli.js",
+    "lint": "eslint src --max-warnings=0",
+    "start": "node dist/cli.js",
+    "test": "vitest run",
+    "test:convex-live": "vitest run src/convex-demo.live.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@causaic/coordinator-core": "workspace:*",
+    "@causaic/coordinator-convex": "workspace:*",
+    "@causaic/coordinator-memory": "workspace:*",
+    "@causaic/protocol": "workspace:*",
+    "@causaic/runner-core": "workspace:*",
+    "@causaic/runtime-core": "workspace:*",
+    "@causaic/runtime-fake": "workspace:*",
+    "@causaic/workflow-schema": "workspace:*",
+    "@causaic/workflow-source-verification": "workspace:*",
+    "convex": "^1.42.2",
+    "zod": "^4.3.6"
+  }
+}

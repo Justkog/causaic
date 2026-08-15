@@ -1,0 +1,32 @@
+{
+  "name": "causaic",
+  "interface": {
+    "displayName": "Causaic"
+  },
+  "plugins": [
+    {
+      "name": "causaic-contributor-dev",
+      "source": {
+        "source": "local",
+        "path": "./plugins/causaic-contributor-dev"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "causaic-operator-dev",
+      "source": {
+        "source": "local",
+        "path": "./plugins/causaic-operator-dev"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

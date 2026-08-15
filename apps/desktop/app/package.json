@@ -1,0 +1,12 @@
+{
+  "name": "@causaic/desktop-app",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Packaged Causaic desktop runtime",
+  "type": "module",
+  "packageManager": "pnpm@11.13.0",
+  "main": "out/main/index.js",
+  "dependencies": {
+    "better-sqlite3": "12.11.1"
+  }
+}

@@ -1,0 +1,8 @@
+node_modules
+dist
+out
+coverage
+.turbo
+pnpm-lock.yaml
+docs/Causaic Product Requirements.md
+docs/Causaic Technical Architecture.md

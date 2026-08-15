@@ -1,0 +1,813 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "e10d33b9-db2b-43a9-9b9f-afbf7837b392",
+  "prevId": "f75dc756-d83d-40f7-925e-565afd997a5b",
+  "tables": {
+    "application_metadata": {
+      "name": "application_metadata",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "installation_id": {
+          "name": "installation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_configured_node_id": {
+          "name": "last_configured_node_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_successful_startup_at": {
+          "name": "last_successful_startup_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "application_metadata_installation_id_unique": {
+          "name": "application_metadata_installation_id_unique",
+          "columns": ["installation_id"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "application_metadata_singleton": {
+          "name": "application_metadata_singleton",
+          "value": "\"application_metadata\".\"id\" = 1"
+        }
+      }
+    },
+    "desktop_preferences": {
+      "name": "desktop_preferences",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "paused": {
+          "name": "paused",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "last_selected_view": {
+          "name": "last_selected_view",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'jobs'"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "desktop_preferences_singleton": {
+          "name": "desktop_preferences_singleton",
+          "value": "\"desktop_preferences\".\"id\" = 1"
+        },
+        "desktop_preferences_view": {
+          "name": "desktop_preferences_view",
+          "value": "\"desktop_preferences\".\"last_selected_view\" IN ('jobs', 'execution', 'settings')"
+        }
+      }
+    },
+    "local_approvals": {
+      "name": "local_approvals",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "execution_id": {
+          "name": "execution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "domain": {
+          "name": "domain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "capabilities_json": {
+          "name": "capabilities_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'[]'"
+        },
+        "presentation_status": {
+          "name": "presentation_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "authoritative_status": {
+          "name": "authoritative_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'unknown'"
+        },
+        "attempted_decision": {
+          "name": "attempted_decision",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "denial_reason": {
+          "name": "denial_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "requested_at": {
+          "name": "requested_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "decision_attempted_at": {
+          "name": "decision_attempted_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "resolved_at": {
+          "name": "resolved_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notified_at": {
+          "name": "notified_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "local_approvals_execution_status_idx": {
+          "name": "local_approvals_execution_status_idx",
+          "columns": ["execution_id", "presentation_status"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "local_approvals_execution_id_local_executions_id_fk": {
+          "name": "local_approvals_execution_id_local_executions_id_fk",
+          "tableFrom": "local_approvals",
+          "tableTo": "local_executions",
+          "columnsFrom": ["execution_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "local_approvals_presentation_status": {
+          "name": "local_approvals_presentation_status",
+          "value": "\"local_approvals\".\"presentation_status\" IN ('pending', 'decision_attempted', 'reconciled', 'superseded')"
+        },
+        "local_approvals_authoritative_status": {
+          "name": "local_approvals_authoritative_status",
+          "value": "\"local_approvals\".\"authoritative_status\" IN ('unknown', 'pending', 'approved', 'denied')"
+        }
+      }
+    },
+    "local_artifacts": {
+      "name": "local_artifacts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "execution_id": {
+          "name": "execution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "relative_path": {
+          "name": "relative_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "content_hash": {
+          "name": "content_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "byte_size": {
+          "name": "byte_size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "schema_version": {
+          "name": "schema_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "validation_status": {
+          "name": "validation_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "submission_status": {
+          "name": "submission_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "submission_attempts": {
+          "name": "submission_attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "local_artifacts_relative_path_unique": {
+          "name": "local_artifacts_relative_path_unique",
+          "columns": ["relative_path"],
+          "isUnique": true
+        },
+        "local_artifacts_execution_status_idx": {
+          "name": "local_artifacts_execution_status_idx",
+          "columns": ["execution_id", "submission_status"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "local_artifacts_execution_id_local_executions_id_fk": {
+          "name": "local_artifacts_execution_id_local_executions_id_fk",
+          "tableFrom": "local_artifacts",
+          "tableTo": "local_executions",
+          "columnsFrom": ["execution_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "local_artifacts_nonnegative_size": {
+          "name": "local_artifacts_nonnegative_size",
+          "value": "\"local_artifacts\".\"byte_size\" >= 0"
+        },
+        "local_artifacts_validation_status": {
+          "name": "local_artifacts_validation_status",
+          "value": "\"local_artifacts\".\"validation_status\" IN ('validated', 'missing', 'invalid')"
+        },
+        "local_artifacts_submission_status": {
+          "name": "local_artifacts_submission_status",
+          "value": "\"local_artifacts\".\"submission_status\" IN ('local_only', 'pending', 'confirmed', 'conflict')"
+        }
+      }
+    },
+    "local_execution_events": {
+      "name": "local_execution_events",
+      "columns": {
+        "execution_id": {
+          "name": "execution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "local_execution_events_time_idx": {
+          "name": "local_execution_events_time_idx",
+          "columns": ["execution_id", "occurred_at"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "local_execution_events_execution_id_local_executions_id_fk": {
+          "name": "local_execution_events_execution_id_local_executions_id_fk",
+          "tableFrom": "local_execution_events",
+          "tableTo": "local_executions",
+          "columnsFrom": ["execution_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "local_execution_events_execution_id_sequence_pk": {
+          "columns": ["execution_id", "sequence"],
+          "name": "local_execution_events_execution_id_sequence_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "local_execution_events_type": {
+          "name": "local_execution_events_type",
+          "value": "\"local_execution_events\".\"type\" IN ('job.selected', 'runtime.selected', 'lease.acquired', 'run.started', 'phase.changed', 'progress', 'approval.requested', 'approval.resolved', 'artifact.produced', 'artifact.submitted', 'execution.completed', 'execution.cancelled', 'execution.failed')"
+        }
+      }
+    },
+    "local_executions": {
+      "name": "local_executions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lease_id": {
+          "name": "lease_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "node_id": {
+          "name": "node_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "executor_id": {
+          "name": "executor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "runtime_type": {
+          "name": "runtime_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "objective": {
+          "name": "objective",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "campaign_name": {
+          "name": "campaign_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lifecycle_status": {
+          "name": "lifecycle_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "recovery_status": {
+          "name": "recovery_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "last_runner_sequence": {
+          "name": "last_runner_sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": -1
+        },
+        "last_progress_sequence": {
+          "name": "last_progress_sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": -1
+        },
+        "progress_message": {
+          "name": "progress_message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_confirmed_remote_stage": {
+          "name": "last_confirmed_remote_stage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "remote_snapshot_json": {
+          "name": "remote_snapshot_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "failure_code": {
+          "name": "failure_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "failure_message": {
+          "name": "failure_message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "retryable": {
+          "name": "retryable",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "cancellation_requested_at": {
+          "name": "cancellation_requested_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "terminal_at": {
+          "name": "terminal_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "terminal_notified_at": {
+          "name": "terminal_notified_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "local_executions_recovery_updated_idx": {
+          "name": "local_executions_recovery_updated_idx",
+          "columns": ["recovery_status", "updated_at"],
+          "isUnique": false
+        },
+        "local_executions_job_idx": {
+          "name": "local_executions_job_idx",
+          "columns": ["job_id"],
+          "isUnique": false
+        },
+        "local_executions_lease_idx": {
+          "name": "local_executions_lease_idx",
+          "columns": ["lease_id"],
+          "isUnique": true
+        },
+        "local_executions_run_idx": {
+          "name": "local_executions_run_idx",
+          "columns": ["run_id"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "local_executions_lifecycle_status": {
+          "name": "local_executions_lifecycle_status",
+          "value": "\"local_executions\".\"lifecycle_status\" IN ('selected', 'leasing', 'starting_run', 'running', 'awaiting_approval', 'validating', 'artifact_persisted', 'artifact_submitted', 'completion_pending', 'cleanup_pending', 'completed', 'cancelled', 'failed', 'interrupted')"
+        },
+        "local_executions_recovery_status": {
+          "name": "local_executions_recovery_status",
+          "value": "\"local_executions\".\"recovery_status\" IN ('pending', 'reconciling', 'reconciled', 'attention_required')"
+        }
+      }
+    },
+    "pending_operations": {
+      "name": "pending_operations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "execution_id": {
+          "name": "execution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "payload_json": {
+          "name": "payload_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "last_error_code": {
+          "name": "last_error_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_error_message": {
+          "name": "last_error_message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "confirmed_at": {
+          "name": "confirmed_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "pending_operations_idempotency_key_unique": {
+          "name": "pending_operations_idempotency_key_unique",
+          "columns": ["idempotency_key"],
+          "isUnique": true
+        },
+        "pending_operations_status_updated_idx": {
+          "name": "pending_operations_status_updated_idx",
+          "columns": ["status", "updated_at"],
+          "isUnique": false
+        },
+        "pending_operations_execution_idx": {
+          "name": "pending_operations_execution_idx",
+          "columns": ["execution_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "pending_operations_execution_id_local_executions_id_fk": {
+          "name": "pending_operations_execution_id_local_executions_id_fk",
+          "tableFrom": "pending_operations",
+          "tableTo": "local_executions",
+          "columnsFrom": ["execution_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "pending_operations_kind": {
+          "name": "pending_operations_kind",
+          "value": "\"pending_operations\".\"kind\" IN ('acquire_lease', 'start_run', 'renew_lease', 'request_approval', 'resolve_approval', 'submit_artifact', 'complete_run', 'fail_run', 'release_lease')"
+        },
+        "pending_operations_status": {
+          "name": "pending_operations_status",
+          "value": "\"pending_operations\".\"status\" IN ('pending', 'confirmed', 'failed')"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

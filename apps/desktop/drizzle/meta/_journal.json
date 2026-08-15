@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1784231645969,
+      "tag": "0000_initial-local-state",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1784234045349,
+      "tag": "0001_military_wrecking_crew",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784454687021,
+      "tag": "0002_kind_mystique",
+      "breakpoints": true
+    }
+  ]
+}

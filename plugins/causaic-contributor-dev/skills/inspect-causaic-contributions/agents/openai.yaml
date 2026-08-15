@@ -1,0 +1,11 @@
+interface:
+  display_name: 'Inspect Causaic contributions'
+  short_description: 'Review the authenticated contributor history.'
+  default_prompt: 'Use $inspect-causaic-contributions to inspect my Causaic contribution history.'
+dependencies:
+  tools:
+    - type: 'mcp'
+      value: 'causaic-contributor-dev'
+      description: 'Causaic development contributor MCP server'
+      transport: 'streamable_http'
+      url: 'https://compassionate-swordfish-378.eu-west-1.convex.site/mcp/contributor'
