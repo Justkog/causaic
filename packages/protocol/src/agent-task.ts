@@ -26,12 +26,6 @@ const OptionalMarkdownSchema = z
   .max(20_000)
   .optional()
   .transform((value) => (value === '' ? undefined : value));
-const OptionalVersionConstraintSchema = z
-  .string()
-  .trim()
-  .max(64)
-  .optional()
-  .transform((value) => (value === '' ? undefined : value));
 
 export const WorkflowInstructionsSchema = z
   .object({
@@ -48,29 +42,6 @@ export const WorkflowExecutionModeSchema = z
   .object({
     type: z.literal('managed_agent'),
     runtimeTypes: z.array(z.literal('fake')).min(1).max(1),
-  })
-  .strict();
-
-export const WorkflowCapabilityRequirementSchema = z
-  .object({
-    type: z.literal('network_access'),
-    scope: z.literal('declared_sources'),
-    summary: z.string().trim().min(1).max(280),
-  })
-  .strict();
-
-export const WorkflowToolRequirementSchema = z
-  .object({
-    kind: z.enum(['built_in', 'mcp_server']),
-    identifier: z
-      .string()
-      .trim()
-      .min(1)
-      .max(128)
-      .regex(/^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/),
-    versionConstraint: OptionalVersionConstraintSchema,
-    required: z.boolean(),
-    summary: z.string().trim().min(1).max(280),
   })
   .strict();
 
@@ -115,18 +86,6 @@ export const CapabilityHintSchema = z
   .strict();
 export type CapabilityHint = z.infer<typeof CapabilityHintSchema>;
 
-export const WorkflowApprovalCheckpointSchema = z
-  .object({
-    id: z
-      .string()
-      .trim()
-      .regex(/^[a-z][a-z0-9_-]{0,63}$/),
-    trigger: z.literal('before_network_access'),
-    type: z.literal('network_access'),
-    summary: z.string().trim().min(1).max(280),
-  })
-  .strict();
-
 export const WorkflowExecutionExampleSchema = z
   .object({
     input: JsonValueSchema,
@@ -136,16 +95,6 @@ export const WorkflowExecutionExampleSchema = z
 export type WorkflowExecutionExample = z.infer<
   typeof WorkflowExecutionExampleSchema
 >;
-
-const WorkflowValidationTaskContentSchema = z
-  .object({
-    instructions: WorkflowInstructionsSchema,
-    capabilityManifest: z.array(WorkflowCapabilityRequirementSchema).max(16),
-    toolRequirements: z.array(WorkflowToolRequirementSchema).max(32),
-    approvalPolicy: z.array(WorkflowApprovalCheckpointSchema).max(16),
-    examples: z.array(WorkflowExecutionExampleSchema).max(3),
-  })
-  .strict();
 
 export const AgentTaskDefinitionSchema = z
   .object({
@@ -157,8 +106,13 @@ export const AgentTaskDefinitionSchema = z
   .strict();
 export type AgentTaskDefinition = z.infer<typeof AgentTaskDefinitionSchema>;
 
-export const WorkflowValidationTaskDefinitionSchema =
-  WorkflowValidationTaskContentSchema;
+export const WorkflowValidationTaskDefinitionSchema = z
+  .object({
+    instructions: WorkflowInstructionsSchema,
+    capabilityHints: z.array(CapabilityHintSchema).max(16),
+    examples: z.array(WorkflowExecutionExampleSchema).max(3),
+  })
+  .strict();
 export type WorkflowValidationTaskDefinition = z.infer<
   typeof WorkflowValidationTaskDefinitionSchema
 >;
@@ -173,9 +127,7 @@ export type WorkflowExecutionRequirements = z.infer<
 
 export const WorkflowValidationRequirementsSchema =
   WorkflowValidationTaskDefinitionSchema.pick({
-    capabilityManifest: true,
-    toolRequirements: true,
-    approvalPolicy: true,
+    capabilityHints: true,
   }).strict();
 export type WorkflowValidationRequirements = z.infer<
   typeof WorkflowValidationRequirementsSchema
@@ -410,7 +362,6 @@ export type WorkflowValidationSession = z.infer<
 export const ValidationRunStatusSchema = z.enum([
   'preparing',
   'running',
-  'awaiting_approval',
   'completed',
   'failed',
   'cancelled',

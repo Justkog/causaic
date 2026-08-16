@@ -2,7 +2,6 @@ import {
   ApprovalIdSchema,
   ArtifactIdSchema,
   RunIdSchema,
-  ValidationApprovalIdSchema,
   ValidationRunIdSchema,
   JobDefinitionSchema,
   JobIdSchema,
@@ -86,7 +85,7 @@ async function collectAfterApproval(
 }
 
 describe('FakeRuntimeAdapter', () => {
-  it('runs a deterministic validation session with its own approval', async () => {
+  it('runs a deterministic validation session without an approval step', async () => {
     const runtime = new FakeRuntimeAdapter();
     const definition = validExecutableWorkflowDefinitionFixture;
     if (definition.validation === undefined)
@@ -100,9 +99,6 @@ describe('FakeRuntimeAdapter', () => {
       ),
       validationRunId: ValidationRunIdSchema.parse(
         'validation_run_validation-test',
-      ),
-      approvalId: ValidationApprovalIdSchema.parse(
-        'validation_approval_validation-test',
       ),
       task: definition.validation.task,
       input: {
@@ -136,16 +132,6 @@ describe('FakeRuntimeAdapter', () => {
     );
     const iterator = stream[Symbol.asyncIterator]();
     const events: ValidationRuntimeEvent[] = [];
-    for (let index = 0; index < 3; index += 1) {
-      const next = await iterator.next();
-      if (next.done) throw new Error('Validation ended before approval');
-      events.push(next.value);
-    }
-    expect(events.at(-1)?.type).toBe('validation.approval_requested');
-    await runtime.resolveValidationApproval(session.sessionId, {
-      approvalId: context.approvalId,
-      decision: 'approved',
-    });
     for (;;) {
       const next = await iterator.next();
       if (next.done) break;

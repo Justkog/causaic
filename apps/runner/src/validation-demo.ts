@@ -1,5 +1,4 @@
 import {
-  ValidationApprovalIdSchema,
   WorkflowValidationSessionSchema,
   type WorkflowValidationResult,
 } from '@causaic/protocol';
@@ -11,21 +10,15 @@ import {
 import { FakeRuntimeAdapter } from '@causaic/runtime-fake';
 import { ConvexHttpClient } from 'convex/browser';
 import { makeFunctionReference } from 'convex/server';
-import { z } from 'zod';
 
 interface ValidationClient {
   mutation(name: string, args: Record<string, unknown>): Promise<unknown>;
 }
 
-const ApprovalSchema = z
-  .object({ id: ValidationApprovalIdSchema })
-  .passthrough();
-
 export interface ValidationDemoOptions {
   readonly client: ValidationClient;
   readonly artifactExternalId: string;
   readonly runtime?: AgentValidationRuntimeAdapter;
-  readonly approveNetwork?: boolean;
   readonly confirmRecommendation?: boolean;
   readonly writeLine?: (line: string) => void;
 }
@@ -44,16 +37,12 @@ export async function runValidationDemo(
   const runtimeSessionId = RuntimeSessionIdSchema.parse(
     `runtime-session_validation-${crypto.randomUUID()}`,
   );
-  const approvalId = ValidationApprovalIdSchema.parse(
-    `validation_approval_${crypto.randomUUID()}`,
-  );
   const prepared = await runtime.prepareValidationSession({
     sessionId: runtimeSessionId,
     installationId: RuntimeInstallationIdSchema.parse(
       'runtime-installation_fake-validator',
     ),
     validationRunId: session.validationRunId,
-    approvalId,
     task: session.task,
     input: session.input,
   });
@@ -69,31 +58,6 @@ export async function runValidationDemo(
         sequence: event.sequence + 1,
         message: event.message,
       });
-    } else if (event.type === 'validation.approval_requested') {
-      const approval = ApprovalSchema.parse(
-        await options.client.mutation('artifactValidations:requestApproval', {
-          validationRunExternalId: session.validationRunId,
-          reason: event.reason,
-          expiresAt: Date.now() + 60_000,
-        }),
-      );
-      const approved = options.approveNetwork !== false;
-      await options.client.mutation('artifactValidations:resolveApproval', {
-        validationRunExternalId: session.validationRunId,
-        approvalExternalId: approval.id,
-        decision: approved ? 'approved' : 'denied',
-        ...(approved ? {} : { denialReason: 'Denied by CLI operator' }),
-      });
-      await runtime.resolveValidationApproval(
-        runtimeSessionId,
-        approved
-          ? { approvalId, decision: 'approved' }
-          : {
-              approvalId,
-              decision: 'denied',
-              reason: 'Denied by CLI operator',
-            },
-      );
     } else if (event.type === 'validation.completed') {
       result = event.result;
       await options.client.mutation('artifactValidations:submitResult', {

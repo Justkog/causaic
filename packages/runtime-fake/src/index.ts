@@ -7,7 +7,6 @@ import {
   RuntimeInstallationIdSchema,
   RuntimeSessionContextSchema,
   RuntimeSessionIdSchema,
-  ValidationApprovalDecisionSchema,
   ValidationRuntimeEventSchema,
   ValidationRuntimeSessionContextSchema,
 } from '@causaic/runtime-core';
@@ -21,7 +20,6 @@ import type {
   RuntimeInstallation,
   RuntimeSessionContext,
   PreparedValidationSession,
-  ValidationApprovalDecision,
   ValidationRuntimeEvent,
   ValidationRuntimeSessionContext,
 } from '@causaic/runtime-core';
@@ -57,10 +55,6 @@ interface FakeSessionState {
 interface FakeValidationSessionState {
   readonly prepared: PreparedValidationSession;
   status: SessionStatus;
-  pendingDecision?: ValidationApprovalDecision | undefined;
-  resolvedDecision?: ValidationApprovalDecision | undefined;
-  wake?:
-    ((result: ValidationApprovalDecision | 'cancelled') => void) | undefined;
 }
 
 type EventPayload<Event> = Event extends RuntimeEvent
@@ -430,35 +424,6 @@ export class FakeRuntimeAdapter
       type: 'validation.progress',
       message: 'Reviewing the artifact against the original job input',
     });
-    if (validated.task.approvalPolicy.length > 0) {
-      yield event({
-        type: 'validation.approval_requested',
-        approvalId: validated.approvalId,
-        reason:
-          'Read the source declared by the job before recommending a decision',
-      });
-      const decision = await this.waitForValidationApproval(state, signal);
-      if (decision === 'cancelled') {
-        state.status = 'completed';
-        yield event({
-          type: 'validation.cancelled',
-          reason: 'Validation aborted',
-        });
-        return;
-      }
-      if (decision.decision === 'denied') {
-        state.status = 'completed';
-        yield event({
-          type: 'validation.failed',
-          failure: {
-            code: 'approval_denied',
-            message: decision.reason,
-            retryable: false,
-          },
-        });
-        return;
-      }
-    }
     const jobInput = validated.input.job.input;
     const artifact = validated.input.artifact.content;
     const inputClaim =
@@ -497,50 +462,6 @@ export class FakeRuntimeAdapter
                 },
               ],
             },
-    });
-  }
-
-  public async resolveValidationApproval(
-    sessionId: string,
-    decision: ValidationApprovalDecision,
-  ): Promise<void> {
-    const validatedSessionId = RuntimeSessionIdSchema.parse(sessionId);
-    const validatedDecision = ValidationApprovalDecisionSchema.parse(decision);
-    const state = this.validationSessions.get(validatedSessionId);
-    if (state === undefined)
-      throw new RuntimeAdapterError(
-        'unknown_session',
-        `Unknown validation session ${validatedSessionId}`,
-      );
-    if (state.resolvedDecision !== undefined) {
-      if (
-        JSON.stringify(state.resolvedDecision) ===
-        JSON.stringify(validatedDecision)
-      )
-        return;
-      throw new RuntimeAdapterError(
-        'approval_already_resolved',
-        `Validation approval for ${validatedSessionId} was already resolved`,
-      );
-    }
-    state.pendingDecision = validatedDecision;
-    state.resolvedDecision = validatedDecision;
-    state.wake?.(validatedDecision);
-  }
-
-  private async waitForValidationApproval(
-    state: FakeValidationSessionState,
-    signal: AbortSignal,
-  ): Promise<ValidationApprovalDecision | 'cancelled'> {
-    if (state.pendingDecision !== undefined) return state.pendingDecision;
-    if (signal.aborted) return 'cancelled';
-    return new Promise((resolve) => {
-      const onAbort = () => resolve('cancelled');
-      state.wake = (result) => {
-        signal.removeEventListener('abort', onAbort);
-        resolve(result);
-      };
-      signal.addEventListener('abort', onAbort, { once: true });
     });
   }
 

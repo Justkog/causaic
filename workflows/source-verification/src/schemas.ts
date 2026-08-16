@@ -86,13 +86,6 @@ const browseCapabilityHint = {
   description: 'Access the public sources declared in the job input.',
 } as const;
 
-const networkApproval = {
-  id: 'declared-source-network-access',
-  trigger: 'before_network_access',
-  type: 'network_access',
-  summary: 'Approve access to the public sources declared by the job.',
-} as const;
-
 export const sourceVerificationExecutionTask = {
   instructions: {
     objective: 'Verify a structured claim against its declared public sources.',
@@ -138,15 +131,7 @@ export const sourceVerificationValidationTask = {
     ],
     outputInstructions: 'Return the fixed Causaic validation-result envelope.',
   },
-  capabilityManifest: [
-    {
-      type: 'network_access',
-      scope: 'declared_sources',
-      summary: 'Access the public sources declared in the job input.',
-    },
-  ],
-  toolRequirements: [],
-  approvalPolicy: [networkApproval],
+  capabilityHints: [browseCapabilityHint],
   examples: [],
 } as const satisfies WorkflowValidationTaskDefinition;
 

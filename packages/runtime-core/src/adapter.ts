@@ -6,7 +6,6 @@ import type {
   RuntimeInstallation,
   RuntimeSessionContext,
   PreparedValidationSession,
-  ValidationApprovalDecision,
   ValidationRuntimeEvent,
   ValidationRuntimeSessionContext,
 } from './schemas.js';
@@ -51,10 +50,6 @@ export interface AgentValidationRuntimeAdapter {
     session: PreparedValidationSession,
     signal: AbortSignal,
   ): AsyncIterable<ValidationRuntimeEvent>;
-  resolveValidationApproval(
-    sessionId: string,
-    decision: ValidationApprovalDecision,
-  ): Promise<void>;
 }
 
 export type RuntimeAdapter = AgentRuntimeAdapter;

@@ -75,22 +75,7 @@ export const validExecutableWorkflowDefinitionFixture =
     validation: {
       policy: 'human_confirmation',
       task: {
-        capabilityManifest: [
-          {
-            type: 'network_access' as const,
-            scope: 'declared_sources' as const,
-            summary: 'Access declared public sources.',
-          },
-        ],
-        toolRequirements: [],
-        approvalPolicy: [
-          {
-            id: 'network-access',
-            trigger: 'before_network_access' as const,
-            type: 'network_access' as const,
-            summary: 'Approve declared-source access.',
-          },
-        ],
+        capabilityHints: fixtureTask.capabilityHints,
         examples: [],
         instructions: {
           objective: 'Review the fixture artifact.',
@@ -185,22 +170,7 @@ export const validSourceVerificationJobFixture = {
       capabilityHints: fixtureTask.capabilityHints,
     },
     validation: {
-      capabilityManifest: [
-        {
-          type: 'network_access' as const,
-          scope: 'declared_sources' as const,
-          summary: 'Access declared public sources.',
-        },
-      ],
-      toolRequirements: [],
-      approvalPolicy: [
-        {
-          id: 'network-access',
-          trigger: 'before_network_access' as const,
-          type: 'network_access' as const,
-          summary: 'Approve declared-source access.',
-        },
-      ],
+      capabilityHints: fixtureTask.capabilityHints,
     },
   },
   status: 'available',

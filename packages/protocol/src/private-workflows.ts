@@ -22,7 +22,6 @@ import {
   WorkflowValidationIssueCodeDefinitionSchema,
   WorkflowValidationPolicySchema,
   CapabilityHintSchema,
-  WorkflowToolRequirementSchema,
 } from './agent-task.js';
 import {
   WorkflowStatusSchema,
@@ -122,8 +121,7 @@ export const PrivateWorkflowVersionInputSchema = z
     validationEnabled: z.boolean(),
     validationPolicy: WorkflowValidationPolicySchema,
     validationInstructions: WorkflowInstructionsSchema,
-    validationRequiresNetworkAccess: z.boolean(),
-    validationToolRequirements: z.array(WorkflowToolRequirementSchema).max(32),
+    validationCapabilityHints: z.array(CapabilityHintSchema).max(16),
     validationParametersSchemaSummary: z.string().trim().max(280),
     validationParametersSchemaJson: z
       .string()

@@ -53,15 +53,6 @@ describe('CLI arguments', () => {
       { command: 'demo', approval: 'approve' },
     ],
     [
-      ['validation-demo', 'artifact_example', '--approval', 'approve'],
-      {
-        command: 'validation-demo',
-        artifactId: 'artifact_example',
-        approval: 'approve',
-        confirm: true,
-      },
-    ],
-    [
       ['validation-demo', 'artifact_example', '--no-confirm'],
       {
         command: 'validation-demo',

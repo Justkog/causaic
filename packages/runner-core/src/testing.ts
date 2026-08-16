@@ -45,15 +45,9 @@ const job = JobDefinitionSchema.parse({
       ? {}
       : {
           validation: {
-            capabilityManifest:
+            capabilityHints:
               sourceVerificationExecutableDefinitionFixture.validation.task
-                .capabilityManifest,
-            toolRequirements:
-              sourceVerificationExecutableDefinitionFixture.validation.task
-                .toolRequirements,
-            approvalPolicy:
-              sourceVerificationExecutableDefinitionFixture.validation.task
-                .approvalPolicy,
+                .capabilityHints,
           },
         }),
   },

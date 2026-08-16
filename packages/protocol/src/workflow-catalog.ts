@@ -7,7 +7,6 @@ import {
 } from './workflow-data.js';
 import {
   CapabilityHintSchema,
-  WorkflowCapabilityRequirementSchema,
   WorkflowValidationPolicySchema,
 } from './agent-task.js';
 
@@ -24,24 +23,6 @@ export type WorkflowVersionStatus = z.infer<typeof WorkflowVersionStatusSchema>;
 
 export const WorkflowRuntimeTypeSchema = z.enum(['fake']);
 export type WorkflowRuntimeType = z.infer<typeof WorkflowRuntimeTypeSchema>;
-
-export const WorkflowCapabilitySummarySchema =
-  WorkflowCapabilityRequirementSchema;
-export type WorkflowCapabilitySummary = z.infer<
-  typeof WorkflowCapabilitySummarySchema
->;
-
-export const WorkflowApprovalCheckpointSummarySchema = z
-  .object({
-    id: z.string(),
-    trigger: z.literal('before_network_access'),
-    type: z.literal('network_access'),
-    summary: z.string().trim().min(1).max(280),
-  })
-  .strict();
-export type WorkflowApprovalCheckpointSummary = z.infer<
-  typeof WorkflowApprovalCheckpointSummarySchema
->;
 
 export const WorkflowCatalogSummarySchema = z
   .object({

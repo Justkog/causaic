@@ -22,7 +22,7 @@ import {
 export const USAGE = `Usage:
   pnpm causaic-runner demo [--approval approve|deny]
   pnpm causaic-runner convex-demo [--approval approve|deny] [--json] [--step-delay-ms 0-5000]
-  pnpm causaic-runner validation-demo <artifact-id> [--approval approve|deny] [--no-confirm]
+  pnpm causaic-runner validation-demo <artifact-id> [--no-confirm]
   pnpm causaic-runner --help`;
 
 export type CliOptions =
@@ -40,7 +40,6 @@ export type CliOptions =
   | {
       readonly command: 'validation-demo';
       readonly artifactId: string;
-      readonly approval?: InjectedApproval;
       readonly confirm: boolean;
     };
 
@@ -117,7 +116,7 @@ export function parseArguments(args: readonly string[]): CliOptions {
       index += 1;
       continue;
     }
-    if (argument !== '--approval') {
+    if (argument !== '--approval' || args[0] === 'validation-demo') {
       throw new CliUsageError(`Unknown option: ${argument}`);
     }
     const value = args[index + 1];
@@ -145,7 +144,6 @@ export function parseArguments(args: readonly string[]): CliOptions {
       command: 'validation-demo',
       artifactId,
       confirm,
-      ...(approval === undefined ? {} : { approval }),
     };
   }
   return approval === undefined
@@ -296,7 +294,6 @@ export async function runCli(
       await runValidationDemo({
         client: createAuthenticatedValidationClient(convexUrl, clerkJwt),
         artifactExternalId: options.artifactId,
-        approveNetwork: options.approval !== 'deny',
         confirmRecommendation: options.confirm,
         writeLine: (line) => environment.writeOut(`${line}\n`),
       });

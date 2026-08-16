@@ -78,12 +78,6 @@ export const ValidationRunIdSchema = opaqueId(
 );
 export type ValidationRunId = z.infer<typeof ValidationRunIdSchema>;
 
-export const ValidationApprovalIdSchema = opaqueId(
-  'validation_approval',
-  'ValidationApprovalId',
-);
-export type ValidationApprovalId = z.infer<typeof ValidationApprovalIdSchema>;
-
 export const ConsentIdSchema = opaqueId('consent', 'ConsentId');
 export type ConsentId = z.infer<typeof ConsentIdSchema>;
 

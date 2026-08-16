@@ -28,8 +28,8 @@ import {
   validWorkflowReferenceFixture,
   WorkflowReferenceSchema,
   WorkflowExecutionExampleSchema,
+  WorkflowValidationTaskDefinitionSchema,
   AgentTaskDefinitionSchema,
-  WorkflowToolRequirementSchema,
   JobStateSchema,
   RunFailureSchema,
 } from './index.js';
@@ -129,16 +129,39 @@ describe('protocol version 1 schemas', () => {
     ).toBe(false);
   });
 
-  it('normalizes blank optional tool version constraints', () => {
-    const result = WorkflowToolRequirementSchema.safeParse({
-      kind: 'built_in',
-      identifier: 'web',
-      versionConstraint: '  ',
-      required: true,
-      summary: 'Use the web tool.',
-    });
-    expect(result.success).toBe(true);
-    if (result.success) expect(result.data.versionConstraint).toBeUndefined();
+  it('uses portable capability hints for validation tasks', () => {
+    expect(
+      WorkflowValidationTaskDefinitionSchema.safeParse({
+        instructions: {
+          objective: 'Review the artifact.',
+          procedure: 'Compare the artifact with the job input.',
+          constraints: [],
+          completionCriteria: [],
+        },
+        capabilityHints: [
+          {
+            capability: 'web.browse',
+            level: 'required',
+            description: 'Read declared public sources.',
+          },
+        ],
+        examples: [],
+      }).success,
+    ).toBe(true);
+    expect(
+      WorkflowValidationTaskDefinitionSchema.safeParse({
+        instructions: {
+          objective: 'Review the artifact.',
+          procedure: 'Compare the artifact with the job input.',
+          constraints: [],
+          completionCriteria: [],
+        },
+        capabilityManifest: [],
+        toolRequirements: [],
+        approvalPolicy: [],
+        examples: [],
+      }).success,
+    ).toBe(false);
   });
 
   it('parses every cross-boundary message through the public union', () => {

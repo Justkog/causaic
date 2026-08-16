@@ -5,7 +5,6 @@ import {
   JobDefinitionSchema,
   JsonValueSchema,
   RunIdSchema,
-  ValidationApprovalIdSchema,
   ValidationRunIdSchema,
   WorkflowValidationInputSchema,
   WorkflowValidationResultSchema,
@@ -139,7 +138,6 @@ export const ValidationRuntimeSessionContextSchema = z
     sessionId: RuntimeSessionIdSchema,
     installationId: RuntimeInstallationIdSchema,
     validationRunId: ValidationRunIdSchema,
-    approvalId: ValidationApprovalIdSchema,
     task: WorkflowValidationTaskDefinitionSchema,
     input: WorkflowValidationInputSchema,
   })
@@ -156,28 +154,6 @@ export type PreparedValidationSession = z.infer<
   typeof PreparedValidationSessionSchema
 >;
 
-export const ValidationApprovalDecisionSchema = z.discriminatedUnion(
-  'decision',
-  [
-    z
-      .object({
-        approvalId: ValidationApprovalIdSchema,
-        decision: z.literal('approved'),
-      })
-      .strict(),
-    z
-      .object({
-        approvalId: ValidationApprovalIdSchema,
-        decision: z.literal('denied'),
-        reason: NonEmptyStringSchema,
-      })
-      .strict(),
-  ],
-);
-export type ValidationApprovalDecision = z.infer<
-  typeof ValidationApprovalDecisionSchema
->;
-
 const ValidationRuntimeEventBaseSchema = z.object({
   sessionId: RuntimeSessionIdSchema,
   sequence: z.number().int().nonnegative(),
@@ -190,11 +166,6 @@ export const ValidationRuntimeEventSchema = z.discriminatedUnion('type', [
   ValidationRuntimeEventBaseSchema.extend({
     type: z.literal('validation.progress'),
     message: NonEmptyStringSchema,
-  }).strict(),
-  ValidationRuntimeEventBaseSchema.extend({
-    type: z.literal('validation.approval_requested'),
-    approvalId: ValidationApprovalIdSchema,
-    reason: NonEmptyStringSchema,
   }).strict(),
   ValidationRuntimeEventBaseSchema.extend({
     type: z.literal('validation.completed'),

@@ -7,9 +7,9 @@
 ## Decision
 
 A workflow version is the provider-neutral source of truth for authored work.
-Its input and output schemas, instructions, tool requirements, capability
-manifest, approval policy, and optional validation task describe what the work
-requires. Cause creator and operator APIs do not define execution profiles or
+Its input and output schemas, instructions, portable capability hints, and
+optional validation task describe what the work requires. Cause creator and
+operator APIs do not define execution profiles or
 claim compatibility with a provider, host, or runtime.
 
 Any structurally valid private draft may be published. Publication makes the
