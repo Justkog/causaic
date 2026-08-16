@@ -117,9 +117,7 @@ describe('protocol version 1 schemas', () => {
           completionCriteria: [],
         },
         supportedExecutionModes: [],
-        capabilityManifest: [],
-        toolRequirements: [],
-        approvalPolicy: [],
+        capabilityHints: [],
         examples: [example],
       }).success,
     ).toBe(true);

@@ -114,9 +114,7 @@ describe('workflow schema validation', () => {
         supportedExecutionModes: [
           { type: 'managed_agent' as const, runtimeTypes: ['fake' as const] },
         ],
-        capabilityManifest: [],
-        toolRequirements: [],
-        approvalPolicy: [],
+        capabilityHints: [],
         examples: [],
       },
       inputSchema: descriptor,
@@ -133,6 +131,21 @@ describe('workflow schema validation', () => {
             ...definition.execution.instructions,
             objective: 'Produce a corrected artifact.',
           },
+        },
+      }),
+    ).resolves.not.toBe(first);
+    await expect(
+      workflowDefinitionHash({
+        ...definition,
+        execution: {
+          ...definition.execution,
+          capabilityHints: [
+            {
+              capability: 'web.browse',
+              level: 'required',
+              description: 'Read declared sources.',
+            },
+          ],
         },
       }),
     ).resolves.not.toBe(first);

@@ -14,7 +14,10 @@ import {
   WorkflowStatusSchema,
   WorkflowVersionStatusSchema,
 } from './workflow-catalog.js';
-import { WorkflowToolRequirementSchema } from './agent-task.js';
+import {
+  CapabilityHintSchema,
+  WorkflowToolRequirementSchema,
+} from './agent-task.js';
 import { WorkflowSchemaDescriptorSchema } from './workflow-data.js';
 
 export const MAX_WORKSTREAMS_PER_CAMPAIGN = 100;
@@ -161,9 +164,7 @@ export const WorkstreamWorkflowSelectionSchema = z
         summary: z.string(),
         inputSchema: WorkflowSchemaDescriptorSchema,
         outputSchema: WorkflowSchemaDescriptorSchema,
-        requiredCapabilities: z.array(WorkflowCapabilitySummarySchema),
-        toolRequirements: z.array(WorkflowToolRequirementSchema),
-        approvalCheckpoints: z.array(WorkflowApprovalCheckpointSummarySchema),
+        capabilityHints: z.array(CapabilityHintSchema),
         validationRequirements: z
           .object({
             requiredCapabilities: z.array(WorkflowCapabilitySummarySchema),

@@ -77,7 +77,7 @@ const installation: RuntimeInstallation = {
   id: RuntimeInstallationIdSchema.parse('runtime-installation_fake'),
   runtimeType: 'fake',
   displayName: 'Causaic Fake Runtime',
-  version: '1.0.0',
+  version: '2.0.0',
   available: true,
 };
 
@@ -90,26 +90,6 @@ function fakeCompatibilityIssues(task: AgentTaskDefinition): readonly string[] {
     )
   )
     issues.push('The fake managed-agent runtime is not declared.');
-  if (task.toolRequirements.length > 0)
-    issues.push('The fake managed-agent runtime does not support tools.');
-  if (
-    !task.capabilityManifest.every(
-      (capability) =>
-        capability.type === 'network_access' &&
-        capability.scope === 'declared_sources',
-    )
-  )
-    issues.push(
-      'The fake managed-agent runtime has an unsupported capability.',
-    );
-  if (
-    !task.approvalPolicy.every(
-      (checkpoint) =>
-        checkpoint.type === 'network_access' &&
-        checkpoint.trigger === 'before_network_access',
-    )
-  )
-    issues.push('The fake managed-agent runtime has an unsupported approval.');
   return issues;
 }
 

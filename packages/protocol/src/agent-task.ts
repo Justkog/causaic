@@ -74,6 +74,47 @@ export const WorkflowToolRequirementSchema = z
   })
   .strict();
 
+const CapabilityIdentifierSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .regex(/^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/);
+
+const OptionalCapabilityDescriptionSchema = z
+  .string()
+  .trim()
+  .max(280)
+  .optional()
+  .transform((value) => (value === '' ? undefined : value));
+
+const OptionalProviderReferenceSchema = z
+  .string()
+  .trim()
+  .max(2_000)
+  .optional()
+  .transform((value) => (value === '' ? undefined : value));
+
+export const SuggestedProviderSchema = z
+  .object({
+    kind: z.enum(['mcp', 'plugin', 'connector']),
+    name: z.string().trim().min(1).max(128),
+    description: OptionalCapabilityDescriptionSchema,
+    reference: OptionalProviderReferenceSchema,
+  })
+  .strict();
+export type SuggestedProvider = z.infer<typeof SuggestedProviderSchema>;
+
+export const CapabilityHintSchema = z
+  .object({
+    capability: CapabilityIdentifierSchema,
+    level: z.enum(['required', 'recommended']),
+    description: OptionalCapabilityDescriptionSchema,
+    suggestedProviders: z.array(SuggestedProviderSchema).max(8).optional(),
+  })
+  .strict();
+export type CapabilityHint = z.infer<typeof CapabilityHintSchema>;
+
 export const WorkflowApprovalCheckpointSchema = z
   .object({
     id: z
@@ -96,7 +137,7 @@ export type WorkflowExecutionExample = z.infer<
   typeof WorkflowExecutionExampleSchema
 >;
 
-const AgentTaskContentSchema = z
+const WorkflowValidationTaskContentSchema = z
   .object({
     instructions: WorkflowInstructionsSchema,
     capabilityManifest: z.array(WorkflowCapabilityRequirementSchema).max(16),
@@ -108,28 +149,42 @@ const AgentTaskContentSchema = z
 
 export const AgentTaskDefinitionSchema = z
   .object({
-    ...AgentTaskContentSchema.shape,
+    instructions: WorkflowInstructionsSchema,
+    capabilityHints: z.array(CapabilityHintSchema).max(16),
+    examples: z.array(WorkflowExecutionExampleSchema).max(3),
     supportedExecutionModes: z.array(WorkflowExecutionModeSchema).max(1),
   })
   .strict();
 export type AgentTaskDefinition = z.infer<typeof AgentTaskDefinitionSchema>;
 
-export const WorkflowValidationTaskDefinitionSchema = AgentTaskContentSchema;
+export const WorkflowValidationTaskDefinitionSchema =
+  WorkflowValidationTaskContentSchema;
 export type WorkflowValidationTaskDefinition = z.infer<
   typeof WorkflowValidationTaskDefinitionSchema
 >;
 
-export const WorkflowRequirementsSchema = AgentTaskDefinitionSchema.pick({
-  capabilityManifest: true,
-  toolRequirements: true,
-  approvalPolicy: true,
-}).strict();
-export type WorkflowRequirements = z.infer<typeof WorkflowRequirementsSchema>;
+export const WorkflowExecutionRequirementsSchema =
+  AgentTaskDefinitionSchema.pick({
+    capabilityHints: true,
+  }).strict();
+export type WorkflowExecutionRequirements = z.infer<
+  typeof WorkflowExecutionRequirementsSchema
+>;
+
+export const WorkflowValidationRequirementsSchema =
+  WorkflowValidationTaskDefinitionSchema.pick({
+    capabilityManifest: true,
+    toolRequirements: true,
+    approvalPolicy: true,
+  }).strict();
+export type WorkflowValidationRequirements = z.infer<
+  typeof WorkflowValidationRequirementsSchema
+>;
 
 export const WorkflowVersionRequirementsSchema = z
   .object({
-    execution: WorkflowRequirementsSchema,
-    validation: WorkflowRequirementsSchema.optional(),
+    execution: WorkflowExecutionRequirementsSchema,
+    validation: WorkflowValidationRequirementsSchema.optional(),
   })
   .strict();
 export type WorkflowVersionRequirements = z.infer<

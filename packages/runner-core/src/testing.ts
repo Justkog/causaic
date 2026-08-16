@@ -38,14 +38,8 @@ const job = JobDefinitionSchema.parse({
   },
   workflowRequirements: {
     execution: {
-      capabilityManifest:
-        sourceVerificationExecutableDefinitionFixture.execution
-          .capabilityManifest,
-      toolRequirements:
-        sourceVerificationExecutableDefinitionFixture.execution
-          .toolRequirements,
-      approvalPolicy:
-        sourceVerificationExecutableDefinitionFixture.execution.approvalPolicy,
+      capabilityHints:
+        sourceVerificationExecutableDefinitionFixture.execution.capabilityHints,
     },
     ...(sourceVerificationExecutableDefinitionFixture.validation === undefined
       ? {}

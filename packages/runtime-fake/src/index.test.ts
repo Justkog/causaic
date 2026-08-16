@@ -164,7 +164,7 @@ describe('FakeRuntimeAdapter', () => {
         id: 'runtime-installation_fake',
         runtimeType: 'fake',
         displayName: 'Causaic Fake Runtime',
-        version: '1.0.0',
+        version: '2.0.0',
         available: true,
       },
     ]);
@@ -180,17 +180,23 @@ describe('FakeRuntimeAdapter', () => {
     expect(
       runtime.supports(detected, {
         ...validExecutableWorkflowDefinitionFixture.execution,
-        toolRequirements: [
+        capabilityHints: [
           {
-            kind: 'built_in',
-            identifier: 'web',
-            versionConstraint: undefined,
-            required: true,
-            summary: 'Browse the web.',
+            capability: 'social.publish',
+            level: 'required',
+            description: 'Publish through any suitable authenticated channel.',
+            suggestedProviders: [
+              {
+                kind: 'mcp',
+                name: 'Example MCP',
+                description: undefined,
+                reference: undefined,
+              },
+            ],
           },
         ],
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('prepares identical context idempotently and rejects conflicts', async () => {

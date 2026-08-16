@@ -80,10 +80,10 @@ export const sourceVerificationValidationParametersSchema = {
   additionalProperties: false,
 } as const satisfies JsonValue;
 
-const networkCapability = {
-  type: 'network_access',
-  scope: 'declared_sources',
-  summary: 'Access the public sources declared in the job input.',
+const browseCapabilityHint = {
+  capability: 'web.browse',
+  level: 'required',
+  description: 'Access the public sources declared in the job input.',
 } as const;
 
 const networkApproval = {
@@ -112,9 +112,7 @@ export const sourceVerificationExecutionTask = {
       'Return only the structured result required by the output schema.',
   },
   supportedExecutionModes: [{ type: 'managed_agent', runtimeTypes: ['fake'] }],
-  capabilityManifest: [networkCapability],
-  toolRequirements: [],
-  approvalPolicy: [networkApproval],
+  capabilityHints: [browseCapabilityHint],
   examples: [
     {
       input: sourceVerificationInputExample,
@@ -140,7 +138,13 @@ export const sourceVerificationValidationTask = {
     ],
     outputInstructions: 'Return the fixed Causaic validation-result envelope.',
   },
-  capabilityManifest: [networkCapability],
+  capabilityManifest: [
+    {
+      type: 'network_access',
+      scope: 'declared_sources',
+      summary: 'Access the public sources declared in the job input.',
+    },
+  ],
   toolRequirements: [],
   approvalPolicy: [networkApproval],
   examples: [],

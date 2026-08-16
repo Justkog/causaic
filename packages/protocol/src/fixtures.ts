@@ -24,20 +24,11 @@ const fixtureTaskContent = {
     completionCriteria: ['Return a schema-valid artifact.'],
     outputInstructions: 'Return structured JSON only.',
   },
-  capabilityManifest: [
+  capabilityHints: [
     {
-      type: 'network_access' as const,
-      scope: 'declared_sources' as const,
-      summary: 'Access declared public sources.',
-    },
-  ],
-  toolRequirements: [],
-  approvalPolicy: [
-    {
-      id: 'network-access',
-      trigger: 'before_network_access' as const,
-      type: 'network_access' as const,
-      summary: 'Approve declared-source access.',
+      capability: 'web.browse',
+      level: 'required' as const,
+      description: 'Access declared public sources.',
     },
   ],
   examples: [],
@@ -84,7 +75,23 @@ export const validExecutableWorkflowDefinitionFixture =
     validation: {
       policy: 'human_confirmation',
       task: {
-        ...fixtureTaskContent,
+        capabilityManifest: [
+          {
+            type: 'network_access' as const,
+            scope: 'declared_sources' as const,
+            summary: 'Access declared public sources.',
+          },
+        ],
+        toolRequirements: [],
+        approvalPolicy: [
+          {
+            id: 'network-access',
+            trigger: 'before_network_access' as const,
+            type: 'network_access' as const,
+            summary: 'Approve declared-source access.',
+          },
+        ],
+        examples: [],
         instructions: {
           objective: 'Review the fixture artifact.',
           procedure: 'Compare the artifact with the original job input.',
@@ -175,14 +182,25 @@ export const validSourceVerificationJobFixture = {
   workflow: validWorkflowReferenceFixture,
   workflowRequirements: {
     execution: {
-      capabilityManifest: fixtureTask.capabilityManifest,
-      toolRequirements: fixtureTask.toolRequirements,
-      approvalPolicy: fixtureTask.approvalPolicy,
+      capabilityHints: fixtureTask.capabilityHints,
     },
     validation: {
-      capabilityManifest: fixtureTaskContent.capabilityManifest,
-      toolRequirements: fixtureTaskContent.toolRequirements,
-      approvalPolicy: fixtureTaskContent.approvalPolicy,
+      capabilityManifest: [
+        {
+          type: 'network_access' as const,
+          scope: 'declared_sources' as const,
+          summary: 'Access declared public sources.',
+        },
+      ],
+      toolRequirements: [],
+      approvalPolicy: [
+        {
+          id: 'network-access',
+          trigger: 'before_network_access' as const,
+          type: 'network_access' as const,
+          summary: 'Approve declared-source access.',
+        },
+      ],
     },
   },
   status: 'available',

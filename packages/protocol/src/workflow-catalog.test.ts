@@ -34,10 +34,8 @@ const version = {
       'Structured verification artifact.',
     ),
   },
-  requiredCapabilities: [],
-  approvalCheckpoints: [],
+  capabilityHints: [],
   objective: 'Verify the supplied claim.',
-  toolRequirements: [],
   validationPolicy: 'human_confirmation' as const,
   createdAt: 1,
 };
