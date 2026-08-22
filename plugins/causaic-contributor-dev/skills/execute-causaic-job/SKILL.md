@@ -1,6 +1,6 @@
 ---
 name: execute-causaic-job
-description: Use the Causaic contributor MCP to execute a compatible job from discovery through completion, including consent-gated atomic start, progress, workflow approvals, artifact validation, submission consent, and contribution completion. Trigger when a user wants to pick up or run a Causaic job.
+description: Use the Causaic contributor MCP to execute a compatible job from discovery through completion, including consent-gated atomic start, progress, workflow approvals, atomic artifact submission, and contribution history. Trigger when a user wants to pick up or run a Causaic job.
 ---
 
 # Execute a Causaic job
@@ -15,9 +15,9 @@ Use the contributor MCP connection and the authenticated user’s ownership. Rea
 4. If the client returns protocol-level `input_required`, let the MCP client present its form elicitation and continue with its signed state. If it returns `interaction_required`, present the exact proposal to the user and retry the same `job_begin` business request with `interactionResponse` containing the returned interaction ID and the user’s `accept`, `decline`, or `cancel` decision. Never manufacture consent. Decline and cancel are terminal and must not execute the job.
 5. On `started`, use the returned authoritative `inputs`; the lease and reserved run were created atomically and the run is already `preparing`. Treat the returned executor ID as informational and never copy it into later arguments. Report only monotonic progress with `job_report_progress` using the advertised status and sequence shape. An accepted newer progress sequence keeps the active lease alive and returns the effective `leaseExpiresAt`; do not send stale or equal-sequence calls as heartbeats. Use `lease_renew` only for an exceptional blocking operation that cannot produce meaningful progress before expiry.
 6. If the workflow exposes a runtime checkpoint, use `approval_request`, present the checkpoint to the user, and call `approval_resolve` with the user’s actual decision. If no checkpoint exists, do not create an artificial approval.
-7. Produce the artifact, call `artifact_validate`, and fix every reported validation issue before persisting anything.
-8. Call `artifact_prepare_submission`, show its exact artifact proposal, obtain the user’s actual submission consent, and resolve it with `contributor_consent_resolve`. This consent tool is only for artifact submission; `job_begin` owns start consent.
-9. Call `artifact_submit` with the matching approved consent, then `job_complete`. Finally use `contributions_list` and `contribution_get` to confirm the authenticated contributor’s history.
+7. Produce the artifact and call `artifact_submit`. The server validates it against the pinned output schema before creating any consent record. If the result is `validation_failed`, fix every reported issue and retry with the same run and lease.
+8. Present the exact returned artifact proposal to the user. For form-elicitation clients, let the MCP client collect the decision and continue its signed one-time request; otherwise retry the same `artifact_submit` business request with `interactionResponse` containing the returned interaction ID and the user’s `accept`, `decline`, or `cancel` decision. Acceptance validates, submits the artifact, and completes the contribution atomically. There is no separate prepare, consent-resolve, or job-complete step.
+9. Finally use `contributions_list` and `contribution_get` to confirm the authenticated contributor’s history.
 
 ## Failure and safety rules
 
