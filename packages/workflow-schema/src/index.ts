@@ -21,7 +21,18 @@ export const MAX_DATA_BYTES = 256 * 1024;
 export const MAX_DATA_DEPTH = 12;
 export const MAX_VALIDATION_ISSUES = 20;
 
-const allowedFormats = new Set(['uri', 'date-time']);
+const allowedFormats = new Set([
+  'date',
+  'date-time',
+  'duration',
+  'email',
+  'hostname',
+  'ipv4',
+  'ipv6',
+  'time',
+  'uri',
+  'uuid',
+]);
 const allowedKeywords = new Set([
   '$schema',
   '$defs',

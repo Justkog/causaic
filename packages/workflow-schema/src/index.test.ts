@@ -26,6 +26,19 @@ const schema = {
   additionalProperties: false,
 } as const satisfies JsonValue;
 
+const formatCases = [
+  ['date', '2026-08-23', '2026-02-30'],
+  ['date-time', '2026-08-23T14:30:00Z', '2026-02-30T14:30:00Z'],
+  ['duration', 'P3DT4H', 'three days'],
+  ['email', 'agent@example.com', 'not-an-email'],
+  ['hostname', 'worker.example.com', '-worker.example.com'],
+  ['ipv4', '192.0.2.1', '999.0.2.1'],
+  ['ipv6', '2001:db8::1', '2001:db8:::1'],
+  ['time', '14:30:00Z', '25:00:00Z'],
+  ['uri', 'https://example.com/jobs/1', 'not a uri'],
+  ['uuid', '123e4567-e89b-12d3-a456-426614174000', 'not-a-uuid'],
+] as const;
+
 describe('workflow schema validation', () => {
   it('validates generic JSON data and returns bounded stable issues', async () => {
     const parsed = parseWorkflowSchemaDocument(schema);
@@ -42,13 +55,37 @@ describe('workflow schema validation', () => {
     }
   });
 
-  it('rejects unsupported dialects, keywords, and remote references', () => {
+  it.each(formatCases)(
+    'accepts valid %s values and rejects malformed values',
+    async (format, valid, invalid) => {
+      const parsed = parseWorkflowSchemaDocument({
+        $schema: JSON_SCHEMA_DIALECT_2020_12,
+        type: 'string',
+        format,
+      });
+      const validate = createWorkflowDataValidator(
+        parsed,
+        await sha256Json(parsed),
+      );
+      expect(validate(valid)).toEqual({ valid: true });
+      expect(validate(invalid).valid).toBe(false);
+    },
+  );
+
+  it('rejects unsupported dialects, keywords, formats, and remote references', () => {
     expect(() =>
       parseWorkflowSchemaDocument({ ...schema, $schema: 'draft-07' }),
     ).toThrow(WorkflowSchemaError);
     expect(() =>
       parseWorkflowSchemaDocument({ ...schema, pattern: '.*' }),
     ).toThrow('Unsupported JSON Schema keyword');
+    expect(() =>
+      parseWorkflowSchemaDocument({
+        $schema: JSON_SCHEMA_DIALECT_2020_12,
+        type: 'string',
+        format: 'url',
+      }),
+    ).toThrow('Unsupported JSON Schema format');
     expect(() =>
       parseWorkflowSchemaDocument({
         $schema: JSON_SCHEMA_DIALECT_2020_12,
@@ -161,10 +198,16 @@ describe('workflow schema validation', () => {
           outputInstructions: undefined,
         },
         capabilityHints: [],
-        examples: [],
+        examples: [
+          {
+            result: {
+              decision: 'accept' as const,
+              summary: 'The artifact is valid.',
+              issues: [],
+            },
+          },
+        ],
       },
-      parameterExamples: [],
-      resultExamples: [],
       issueCodes: [
         {
           code: 'unsupported_claim',

@@ -77,6 +77,7 @@ export const sourceVerificationValidationParametersSchema = {
   description: 'No additional validation parameters are currently required.',
   type: 'object',
   properties: {},
+  examples: [{}],
   additionalProperties: false,
 } as const satisfies JsonValue;
 
@@ -85,6 +86,12 @@ const browseCapabilityHint = {
   level: 'required',
   description: 'Access the public sources declared in the job input.',
 } as const;
+
+export const sourceVerificationValidationResultExample = {
+  decision: 'accept',
+  summary: 'The artifact matches the claim and cites the declared source.',
+  issues: [],
+} as const satisfies WorkflowValidationResult;
 
 export const sourceVerificationExecutionTask = {
   instructions: {
@@ -132,14 +139,8 @@ export const sourceVerificationValidationTask = {
     outputInstructions: 'Return the fixed Causaic validation-result envelope.',
   },
   capabilityHints: [browseCapabilityHint],
-  examples: [],
+  examples: [{ result: sourceVerificationValidationResultExample }],
 } as const satisfies WorkflowValidationTaskDefinition;
-
-export const sourceVerificationValidationResultExample = {
-  decision: 'accept',
-  summary: 'The artifact matches the claim and cites the declared source.',
-  issues: [],
-} as const satisfies WorkflowValidationResult;
 
 export const sourceVerificationValidationIssueCodes = [
   {
@@ -186,13 +187,11 @@ export const sourceVerificationExecutableDefinitionFixture =
       policy: 'human_confirmation',
       task: sourceVerificationValidationTask,
       parametersSchema: {
-        id: 'workflow_schema_source-verification-validation-parameters-1-0-0',
+        id: 'workflow_schema_source-verification-validation-parameters-1-0-0-examples-8717e4e607d3',
         dialect: JSON_SCHEMA_DIALECT_2020_12,
-        hash: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        hash: 'sha256:8717e4e607d3baae0ed6f03a93a90ab3c63d17d6cbbfef14933fbccc637dbda9',
         summary: 'No additional validation parameters are required.',
       },
-      parameterExamples: [{}],
-      resultExamples: [sourceVerificationValidationResultExample],
       issueCodes: sourceVerificationValidationIssueCodes,
     },
   });

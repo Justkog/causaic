@@ -106,43 +106,6 @@ export const AgentTaskDefinitionSchema = z
   .strict();
 export type AgentTaskDefinition = z.infer<typeof AgentTaskDefinitionSchema>;
 
-export const WorkflowValidationTaskDefinitionSchema = z
-  .object({
-    instructions: WorkflowInstructionsSchema,
-    capabilityHints: z.array(CapabilityHintSchema).max(16),
-    examples: z.array(WorkflowExecutionExampleSchema).max(3),
-  })
-  .strict();
-export type WorkflowValidationTaskDefinition = z.infer<
-  typeof WorkflowValidationTaskDefinitionSchema
->;
-
-export const WorkflowExecutionRequirementsSchema =
-  AgentTaskDefinitionSchema.pick({
-    capabilityHints: true,
-  }).strict();
-export type WorkflowExecutionRequirements = z.infer<
-  typeof WorkflowExecutionRequirementsSchema
->;
-
-export const WorkflowValidationRequirementsSchema =
-  WorkflowValidationTaskDefinitionSchema.pick({
-    capabilityHints: true,
-  }).strict();
-export type WorkflowValidationRequirements = z.infer<
-  typeof WorkflowValidationRequirementsSchema
->;
-
-export const WorkflowVersionRequirementsSchema = z
-  .object({
-    execution: WorkflowExecutionRequirementsSchema,
-    validation: WorkflowValidationRequirementsSchema.optional(),
-  })
-  .strict();
-export type WorkflowVersionRequirements = z.infer<
-  typeof WorkflowVersionRequirementsSchema
->;
-
 export const WorkflowValidationDecisionSchema = z.enum([
   'accept',
   'reject',
@@ -227,6 +190,64 @@ export type WorkflowValidationResult = z.infer<
   typeof WorkflowValidationResultSchema
 >;
 
+export const WorkflowValidationExampleInputSchema = z
+  .object({
+    jobInput: JsonValueSchema,
+    artifactContent: JsonValueSchema,
+    parameters: JsonValueSchema.nullable(),
+  })
+  .strict();
+export type WorkflowValidationExampleInput = z.infer<
+  typeof WorkflowValidationExampleInputSchema
+>;
+
+export const WorkflowValidationExampleSchema = z
+  .object({
+    input: WorkflowValidationExampleInputSchema.optional(),
+    result: WorkflowValidationResultSchema,
+  })
+  .strict();
+export type WorkflowValidationExample = z.infer<
+  typeof WorkflowValidationExampleSchema
+>;
+
+export const WorkflowValidationTaskDefinitionSchema = z
+  .object({
+    instructions: WorkflowInstructionsSchema,
+    capabilityHints: z.array(CapabilityHintSchema).max(16),
+    examples: z.array(WorkflowValidationExampleSchema).max(3),
+  })
+  .strict();
+export type WorkflowValidationTaskDefinition = z.infer<
+  typeof WorkflowValidationTaskDefinitionSchema
+>;
+
+export const WorkflowExecutionRequirementsSchema =
+  AgentTaskDefinitionSchema.pick({
+    capabilityHints: true,
+  }).strict();
+export type WorkflowExecutionRequirements = z.infer<
+  typeof WorkflowExecutionRequirementsSchema
+>;
+
+export const WorkflowValidationRequirementsSchema =
+  WorkflowValidationTaskDefinitionSchema.pick({
+    capabilityHints: true,
+  }).strict();
+export type WorkflowValidationRequirements = z.infer<
+  typeof WorkflowValidationRequirementsSchema
+>;
+
+export const WorkflowVersionRequirementsSchema = z
+  .object({
+    execution: WorkflowExecutionRequirementsSchema,
+    validation: WorkflowValidationRequirementsSchema.optional(),
+  })
+  .strict();
+export type WorkflowVersionRequirements = z.infer<
+  typeof WorkflowVersionRequirementsSchema
+>;
+
 /**
  * Adds the immutable workflow version's optional issue-code vocabulary to the
  * result boundary. The base result schema remains useful for definitions that
@@ -266,8 +287,6 @@ export const WorkflowValidationDefinitionSchema = z
     task: WorkflowValidationTaskDefinitionSchema,
     parametersSchema: WorkflowSchemaDescriptorSchema.optional(),
     detailsSchema: WorkflowSchemaDescriptorSchema.optional(),
-    parameterExamples: z.array(JsonValueSchema).max(3),
-    resultExamples: z.array(WorkflowValidationResultSchema).max(3),
     issueCodes: z
       .array(WorkflowValidationIssueCodeDefinitionSchema)
       .max(64)
@@ -290,12 +309,20 @@ export const WorkflowValidationDefinitionSchema = z
       }
       seen.add(issueCode.code);
     });
-    definition.resultExamples.forEach((result, resultIndex) => {
-      result.issues.forEach((issue, issueIndex) => {
+    definition.task.examples.forEach((example, exampleIndex) => {
+      example.result.issues.forEach((issue, issueIndex) => {
         if (issue.code !== undefined && !allowedCodes.has(issue.code)) {
           context.addIssue({
             code: 'custom',
-            path: ['resultExamples', resultIndex, 'issues', issueIndex, 'code'],
+            path: [
+              'task',
+              'examples',
+              exampleIndex,
+              'result',
+              'issues',
+              issueIndex,
+              'code',
+            ],
             message: `Issue code "${issue.code}" is not declared by the workflow validation definition.`,
           });
         }

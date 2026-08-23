@@ -65,6 +65,45 @@ describe('workflow validation contracts', () => {
     );
   });
 
+  it('supports result-only and paired validation examples', () => {
+    const validation = validExecutableWorkflowDefinitionFixture.validation;
+    if (validation === undefined) throw new Error('Fixture has no validation');
+    expect(validation.task.examples).toHaveLength(1);
+    expect(
+      WorkflowValidationTaskDefinitionSchema.parse({
+        ...validation.task,
+        examples: [
+          { result: validResult },
+          {
+            input: {
+              jobInput: { claim: 'A claim' },
+              artifactContent: { verdict: 'supported' },
+              parameters: null,
+            },
+            result: {
+              decision: 'accept',
+              summary: 'The artifact is supported.',
+              issues: [],
+            },
+          },
+        ],
+      }).examples,
+    ).toHaveLength(2);
+    expect(
+      WorkflowValidationTaskDefinitionSchema.safeParse({
+        ...validation.task,
+        examples: [{ input: {}, output: validResult }],
+      }).success,
+    ).toBe(false);
+    expect(
+      WorkflowValidationDefinitionSchema.safeParse({
+        ...validation,
+        parameterExamples: [],
+        resultExamples: [],
+      }).success,
+    ).toBe(false);
+  });
+
   it('rejects duplicate issue-code declarations and invalid example codes', () => {
     const validation = validExecutableWorkflowDefinitionFixture.validation;
     if (validation === undefined) throw new Error('Fixture has no validation');
@@ -81,7 +120,10 @@ describe('workflow validation contracts', () => {
     expect(
       WorkflowValidationDefinitionSchema.safeParse({
         ...validation,
-        resultExamples: [validResult],
+        task: {
+          ...validation.task,
+          examples: [{ result: validResult }],
+        },
         issueCodes: [
           { code: 'missing_source', description: 'A source is missing.' },
         ],

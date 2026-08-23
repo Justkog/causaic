@@ -76,7 +76,15 @@ export const validExecutableWorkflowDefinitionFixture =
       policy: 'human_confirmation',
       task: {
         capabilityHints: fixtureTask.capabilityHints,
-        examples: [],
+        examples: [
+          {
+            result: {
+              decision: 'accept',
+              summary: 'The fixture artifact is valid.',
+              issues: [],
+            },
+          },
+        ],
         instructions: {
           objective: 'Review the fixture artifact.',
           procedure: 'Compare the artifact with the original job input.',
@@ -84,8 +92,6 @@ export const validExecutableWorkflowDefinitionFixture =
           completionCriteria: ['Return one explicit decision.'],
         },
       },
-      parameterExamples: [],
-      resultExamples: [],
     },
   });
 
