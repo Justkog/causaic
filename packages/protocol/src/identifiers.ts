@@ -72,6 +72,12 @@ export const ArtifactDecisionIdSchema = opaqueId(
 );
 export type ArtifactDecisionId = z.infer<typeof ArtifactDecisionIdSchema>;
 
+export const ArtifactExportIdSchema = opaqueId(
+  'artifact_export',
+  'ArtifactExportId',
+);
+export type ArtifactExportId = z.infer<typeof ArtifactExportIdSchema>;
+
 export const ValidationRunIdSchema = opaqueId(
   'validation_run',
   'ValidationRunId',
