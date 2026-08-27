@@ -1,19 +1,19 @@
 {
   "name": "causaic-operator-dev",
-  "version": "0.1.0+codex.20260808140728",
-  "description": "Development-only Causaic operator tools for publication, work management, and artifact validation.",
+  "version": "0.1.0+codex.20260826213957",
+  "description": "Development-only Causaic operator tools for publication, work management, artifact validation, and accepted-artifact exports.",
   "author": {
     "name": "Causaic"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "Causaic Operator (Development)",
-    "shortDescription": "Publish, operate, and validate Causaic work.",
-    "longDescription": "Connects Codex to the Causaic development operator MCP and provides guided cause, workflow, campaign, workstream, job-management, and artifact-validation skills.",
+    "shortDescription": "Publish, operate, validate, and export Causaic work.",
+    "longDescription": "Connects Codex to the Causaic development operator MCP and provides guided cause, workflow, campaign, workstream, job-management, artifact-validation, and accepted-artifact export skills.",
     "developerName": "Causaic",
     "category": "Productivity",
     "capabilities": [],
-    "defaultPrompt": "Use the Causaic operator development tools to publish, operate, or review work."
+    "defaultPrompt": "Use the Causaic operator development tools to publish, operate, review, or export work."
   },
   "mcpServers": {
     "causaic-operator-dev": {

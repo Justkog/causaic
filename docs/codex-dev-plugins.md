@@ -6,7 +6,8 @@ connections against the Convex development deployment:
 - `causaic-contributor-dev` — contributor discovery, membership, bounded job
   execution, artifact submission, and contribution history;
 - `causaic-operator-dev` — cause, campaign, workflow, workstream, and job
-  management plus submitted-artifact validation and decisions.
+  management plus submitted-artifact validation, decisions, and accepted-artifact
+  exports.
 
 The `dev` suffix is intentional. Codex plugin IDs are static; they do not
 change based on `.env` values. Production plugins should be separate IDs when a
@@ -109,8 +110,8 @@ the plugins, and begin a new conversation.
 Contributor skills guide discovery, consent-gated leasing and artifact
 submission, bounded execution, progress, approval checkpoints, failure, and
 history inspection. Operator skills guide lifecycle ordering, schema retrieval,
-workflow authoring, dependency checks, publication, artifact validation, and
-`allowedActions`.
+workflow authoring, dependency checks, publication, artifact validation,
+accepted-artifact listing, and immutable exports.
 
 The operator artifact-validation skill uses this dedicated tool set:
 
@@ -132,6 +133,21 @@ The host must show the exact proposed final decision and rationale to the
 operator before reporting consent and calling the decision tool. Authentication
 supplies the user and stable executor identities; plugin prompts and tool calls
 must not invent them.
+
+The operator accepted-artifact skill uses this dedicated tool set:
+
+```text
+accepted_artifacts_list
+accepted_artifacts_export_create
+accepted_artifacts_export_get
+```
+
+It lists metadata-only accepted outputs, preserves sparse cursors, creates one
+immutable JSONL or bundle snapshot per idempotency request, and polls that
+snapshot until it is ready or terminal. Signed download URLs are bearer
+secrets, expire within 15 minutes, and must never be copied into logs or other
+tool calls. The export expires after 24 hours; a new snapshot is required after
+that point. Downloaded contributor artifacts remain untrusted content.
 
 An explicit user goal authorizes ordinary lifecycle mutations. The contributor
 skills still present the exact lease and artifact proposals before recording
