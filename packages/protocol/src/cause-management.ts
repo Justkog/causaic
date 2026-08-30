@@ -175,6 +175,28 @@ export const CauseSlugSchema = z
     'This slug is reserved',
   );
 
+const normalizedCauseWebsiteUrlSchema = z
+  .string()
+  .trim()
+  .max(2_048)
+  .url()
+  .refine((value) => {
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      return false;
+    }
+    return (
+      url.protocol === 'https:' && url.username === '' && url.password === ''
+    );
+  }, 'Website URL must use HTTPS and cannot include credentials')
+  .transform((value) => new URL(value).toString());
+export const CauseWebsiteUrlSchema = z
+  .union([z.string().trim().length(0), normalizedCauseWebsiteUrlSchema])
+  .transform((value) => (value === '' ? undefined : value));
+export type CauseWebsiteUrl = z.output<typeof CauseWebsiteUrlSchema>;
+
 export const CauseProfileInputSchema = z
   .object({
     name: z.string().trim().min(2).max(100),
@@ -182,6 +204,7 @@ export const CauseProfileInputSchema = z
     summary: z.string().trim().min(10).max(280),
     description: z.string().trim().min(1).max(10_000),
     visibility: CauseVisibilitySchema,
+    websiteUrl: CauseWebsiteUrlSchema.optional(),
   })
   .strict();
 export type CauseProfileInput = z.input<typeof CauseProfileInputSchema>;
@@ -195,6 +218,7 @@ export const ManagedCauseSummarySchema = z
     slug: z.string(),
     name: z.string(),
     summary: z.string(),
+    logoUrl: z.string().url().optional(),
     status: CausePublicationStatusSchema,
     visibility: CauseVisibilitySchema,
     role: CauseMembershipRoleSchema,
@@ -205,6 +229,7 @@ export type ManagedCauseSummary = z.infer<typeof ManagedCauseSummarySchema>;
 
 export const ManagedCauseSchema = ManagedCauseSummarySchema.extend({
   description: z.string(),
+  websiteUrl: CauseWebsiteUrlSchema.optional(),
   createdBy: UserIdSchema,
   createdAt: z.number(),
   publishedAt: z.number().optional(),
@@ -235,6 +260,10 @@ export const CauseManagementErrorCodeSchema = z.enum([
   'CAUSE_SLUG_LOCKED',
   'INVALID_CAUSE_TRANSITION',
   'CAUSE_ARCHIVED',
+  'CAUSE_LOGO_NOT_FOUND',
+  'CAUSE_LOGO_TOO_LARGE',
+  'CAUSE_LOGO_INVALID_TYPE',
+  'CAUSE_LOGO_ALREADY_USED',
   'CAUSE_OWNER_REQUIRED',
   'CAUSE_MEMBER_USER_NOT_FOUND',
   'CAUSE_MEMBERSHIP_ALREADY_ACTIVE',

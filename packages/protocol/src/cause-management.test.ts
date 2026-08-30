@@ -5,6 +5,7 @@ import {
   CauseContributorMembershipStatusSchema,
   CampaignProfileInputSchema,
   CauseProfileInputSchema,
+  CauseWebsiteUrlSchema,
   CauseOperatorEmailSchema,
   CauseSlugSchema,
   normalizeCauseSlug,
@@ -48,6 +49,21 @@ describe('cause management contracts', () => {
         description: '',
         visibility: 'public',
       }).success,
+    ).toBe(false);
+  });
+
+  it('accepts secure website URLs and rejects insecure or credentialed URLs', () => {
+    expect(CauseWebsiteUrlSchema.parse('')).toBeUndefined();
+    expect(CauseWebsiteUrlSchema.parse('   ')).toBeUndefined();
+    expect(CauseWebsiteUrlSchema.parse('https://example.test/about')).toBe(
+      'https://example.test/about',
+    );
+    expect(CauseWebsiteUrlSchema.safeParse('http://example.test').success).toBe(
+      false,
+    );
+    expect(
+      CauseWebsiteUrlSchema.safeParse('https://user:secret@example.test')
+        .success,
     ).toBe(false);
   });
 
