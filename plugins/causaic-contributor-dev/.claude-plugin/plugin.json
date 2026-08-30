@@ -1,7 +1,7 @@
 {
   "name": "causaic-contributor-dev",
   "version": "0.1.0",
-  "description": "Development-only Causaic contributor tools and guided job execution workflows.",
+  "description": "Development-only Causaic contributor tools, invitation access, and guided job execution workflows.",
   "author": {
     "name": "Causaic"
   },

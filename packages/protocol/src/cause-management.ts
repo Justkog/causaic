@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   CampaignIdSchema,
   CauseIdSchema,
+  CauseInvitationIdSchema,
   UserIdSchema,
 } from './identifiers.js';
 
@@ -16,7 +17,12 @@ export type CausePublicationStatus = z.infer<
   typeof CausePublicationStatusSchema
 >;
 
-export const CauseVisibilitySchema = z.enum(['private', 'public']);
+export const CauseVisibilitySchema = z.enum([
+  'private',
+  'invite_only',
+  'unlisted',
+  'public',
+]);
 export type CauseVisibility = z.infer<typeof CauseVisibilitySchema>;
 
 export const CauseModerationStatusSchema = z.enum([
@@ -54,6 +60,23 @@ export const CauseContributorMembershipSchema = z
 export type CauseContributorMembership = z.infer<
   typeof CauseContributorMembershipSchema
 >;
+
+export const CauseInvitationStatusSchema = z.enum(['active', 'revoked']);
+export type CauseInvitationStatus = z.infer<typeof CauseInvitationStatusSchema>;
+
+export const CauseInvitationSchema = z
+  .object({
+    id: CauseInvitationIdSchema,
+    causeId: CauseIdSchema,
+    email: z.string().email().max(254),
+    status: CauseInvitationStatusSchema,
+    joined: z.boolean(),
+    createdAt: z.number().int().nonnegative(),
+    updatedAt: z.number().int().nonnegative(),
+    revokedAt: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+export type CauseInvitation = z.infer<typeof CauseInvitationSchema>;
 
 export const CampaignManagementStatusSchema = z.enum([
   'draft',

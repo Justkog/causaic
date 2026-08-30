@@ -4,14 +4,117 @@ import {
   CauseContributorMembershipSchema,
   CauseContributorMembershipStatusSchema,
   CampaignProfileInputSchema,
+  CauseInvitationSchema,
   CauseProfileInputSchema,
+  CauseVisibilitySchema,
   CauseWebsiteUrlSchema,
   CauseOperatorEmailSchema,
   CauseSlugSchema,
+  ManagedCauseSchema,
+  ManagedCauseSummarySchema,
   normalizeCauseSlug,
 } from './cause-management.js';
 
 describe('cause management contracts', () => {
+  it('accepts all cause visibility modes and rejects unknown modes', () => {
+    for (const visibility of [
+      'private',
+      'invite_only',
+      'unlisted',
+      'public',
+    ] as const) {
+      expect(CauseVisibilitySchema.safeParse(visibility).success).toBe(true);
+      expect(
+        CauseProfileInputSchema.safeParse({
+          name: 'Example cause',
+          slug: 'example-cause',
+          summary: 'A cause summary that is long enough.',
+          description: 'A cause description.',
+          visibility,
+        }).success,
+      ).toBe(true);
+      const managedCause = {
+        id: 'cause_example',
+        slug: 'example-cause',
+        name: 'Example cause',
+        summary: 'A cause summary that is long enough.',
+        status: 'draft' as const,
+        visibility,
+        role: 'owner' as const,
+        updatedAt: 1,
+      };
+      expect(ManagedCauseSummarySchema.safeParse(managedCause).success).toBe(
+        true,
+      );
+      expect(
+        ManagedCauseSchema.safeParse({
+          ...managedCause,
+          description: 'A cause description.',
+          createdBy: 'user_example',
+          createdAt: 1,
+        }).success,
+      ).toBe(true);
+    }
+    expect(CauseVisibilitySchema.safeParse('link_only').success).toBe(false);
+    expect(
+      CauseProfileInputSchema.safeParse({
+        name: 'Example cause',
+        slug: 'example-cause',
+        summary: 'A cause summary that is long enough.',
+        description: 'A cause description.',
+        visibility: 'link_only',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('validates invitation projections and their portable IDs', () => {
+    expect(
+      CauseInvitationSchema.safeParse({
+        id: 'cause_invitation_example',
+        causeId: 'cause_example',
+        email: 'person@example.test',
+        status: 'active',
+        joined: false,
+        createdAt: 1,
+        updatedAt: 2,
+      }).success,
+    ).toBe(true);
+    expect(
+      CauseInvitationSchema.safeParse({
+        id: 'cause_invitation_example',
+        causeId: 'cause_example',
+        email: 'person@example.test',
+        status: 'revoked',
+        joined: true,
+        createdAt: 1,
+        updatedAt: 3,
+        revokedAt: 3,
+      }).success,
+    ).toBe(true);
+    expect(
+      CauseInvitationSchema.safeParse({
+        id: 'cause_example',
+        causeId: 'cause_example',
+        email: 'person@example.test',
+        status: 'active',
+        joined: false,
+        createdAt: 1,
+        updatedAt: 2,
+      }).success,
+    ).toBe(false);
+    expect(
+      CauseInvitationSchema.safeParse({
+        id: 'cause_invitation_example',
+        causeId: 'cause_example',
+        email: 'not-an-email',
+        status: 'active',
+        joined: false,
+        createdAt: 1,
+        updatedAt: 2,
+      }).success,
+    ).toBe(false);
+  });
+
   it('restricts contributor membership status to active or left', () => {
     expect(
       CauseContributorMembershipStatusSchema.safeParse('active').success,

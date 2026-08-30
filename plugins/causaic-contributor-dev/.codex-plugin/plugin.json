@@ -1,15 +1,15 @@
 {
   "name": "causaic-contributor-dev",
   "version": "0.1.0+codex.20260808140728",
-  "description": "Development-only Causaic contributor tools and guided job execution workflows.",
+  "description": "Development-only Causaic contributor tools, invitation access, and guided job execution workflows.",
   "author": {
     "name": "Causaic"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "Causaic Contributor (Development)",
-    "shortDescription": "Discover and execute Causaic jobs in development.",
-    "longDescription": "Connects Codex to the Causaic development contributor MCP and provides guided cause discovery, job execution, and contribution-history skills.",
+    "shortDescription": "Discover, join, and execute Causaic work in development.",
+    "longDescription": "Connects Codex to the Causaic development contributor MCP and provides guided cause discovery, invitation access, explicit membership, job execution, and contribution-history skills.",
     "developerName": "Causaic",
     "category": "Productivity",
     "capabilities": [],

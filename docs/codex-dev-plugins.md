@@ -3,9 +3,11 @@
 This repository contains two Codex plugins for testing the authenticated MCP
 connections against the Convex development deployment:
 
-- `causaic-contributor-dev` — contributor discovery, membership, bounded job
-  execution, artifact submission, and contribution history;
-- `causaic-operator-dev` — cause, campaign, workflow, workstream, and job
+- `causaic-contributor-dev` — contributor discovery, email invitation access,
+  membership, bounded job execution, artifact submission, and contribution
+  history;
+- `causaic-operator-dev` — four-mode cause and email invitation management,
+  campaign, workflow, workstream, and job
   management plus submitted-artifact validation, decisions, and accepted-artifact
   exports.
 
@@ -107,7 +109,8 @@ the plugins, and begin a new conversation.
 
 ## Skill behavior
 
-Contributor skills guide discovery, consent-gated leasing and artifact
+Contributor skills guide public discovery, email invitation and slug access,
+consent-gated leasing and artifact
 submission, bounded execution, progress, approval checkpoints, failure, and
 history inspection. Operator skills guide lifecycle ordering, schema retrieval,
 workflow authoring, dependency checks, publication, artifact validation,

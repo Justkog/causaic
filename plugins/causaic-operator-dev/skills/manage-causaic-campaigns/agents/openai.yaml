@@ -1,7 +1,7 @@
 interface:
   display_name: 'Manage Causaic causes and campaigns'
-  short_description: 'Manage causes and campaigns with valid lifecycles.'
-  default_prompt: 'Use $manage-causaic-campaigns to manage my Causaic causes and campaigns.'
+  short_description: 'Manage causes, invitations, and campaigns safely.'
+  default_prompt: 'Use $manage-causaic-campaigns to manage my Causaic causes, invitations, and campaigns.'
 dependencies:
   tools:
     - type: 'mcp'

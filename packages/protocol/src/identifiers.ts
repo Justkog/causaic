@@ -16,6 +16,12 @@ function opaqueId<const Prefix extends string, const Brand extends string>(
 export const CauseIdSchema = opaqueId('cause', 'CauseId');
 export type CauseId = z.infer<typeof CauseIdSchema>;
 
+export const CauseInvitationIdSchema = opaqueId(
+  'cause_invitation',
+  'CauseInvitationId',
+);
+export type CauseInvitationId = z.infer<typeof CauseInvitationIdSchema>;
+
 export const CampaignIdSchema = opaqueId('campaign', 'CampaignId');
 export type CampaignId = z.infer<typeof CampaignIdSchema>;
 
