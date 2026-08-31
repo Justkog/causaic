@@ -18,7 +18,16 @@ import {
 } from './workflow-data.js';
 
 export const MAX_REQUIRED_ACCEPTED_RUNS = 100;
-export const MAX_JOB_PRIORITY = 100;
+export const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
+export const JobPrioritySchema = z.enum(JOB_PRIORITIES);
+export type JobPriority = z.infer<typeof JobPrioritySchema>;
+export const JOB_PRIORITY_RANK = {
+  low: 0,
+  medium: 1,
+  high: 2,
+  urgent: 3,
+} as const satisfies Record<JobPriority, 0 | 1 | 2 | 3>;
+export type JobPriorityRank = (typeof JOB_PRIORITY_RANK)[JobPriority];
 
 export const ManagedJobStatusSchema = z.enum([
   'draft',
@@ -54,7 +63,7 @@ export const JobDraftInputSchema = z
       .int()
       .min(1)
       .max(MAX_REQUIRED_ACCEPTED_RUNS),
-    priority: z.number().int().min(0).max(MAX_JOB_PRIORITY).default(0),
+    priority: JobPrioritySchema.default('medium'),
     availableFrom: z.number().finite().optional(),
     availableUntil: z.number().finite().optional(),
   })
@@ -118,7 +127,7 @@ export const ManagedJobSummarySchema = z
     workflow: ManagedJobWorkflowSchema,
     requiredAcceptedRuns: z.number().int().positive(),
     acceptedRunCount: z.number().int().nonnegative(),
-    priority: z.number().int(),
+    priority: JobPrioritySchema,
     availableFrom: z.number().optional(),
     availableUntil: z.number().optional(),
     createdAt: z.number(),
