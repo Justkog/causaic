@@ -9,4 +9,5 @@ export * from './execution-state.js';
 export * from './identifiers.js';
 export * from './schemas.js';
 export * from './workflow-catalog.js';
+export * from './workflow-reports.js';
 export * from './workflow-data.js';

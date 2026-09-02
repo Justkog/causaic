@@ -3,17 +3,30 @@ import { z } from 'zod';
 function opaqueId<const Prefix extends string, const Brand extends string>(
   prefix: Prefix,
   brand: Brand,
+  reservedPrefixes: readonly string[] = [],
 ) {
+  const reservedPrefixPattern =
+    reservedPrefixes.length === 0
+      ? ''
+      : `(?!${reservedPrefixes
+          .map((reservedPrefix) => `${escapeRegExp(reservedPrefix)}_`)
+          .join('|')})`;
   return z
     .string()
     .regex(
-      new RegExp(`^${prefix}_[a-zA-Z0-9][a-zA-Z0-9_-]*$`),
+      new RegExp(
+        `^${reservedPrefixPattern}${escapeRegExp(prefix)}_[a-zA-Z0-9][a-zA-Z0-9_-]*$`,
+      ),
       `${brand} must start with "${prefix}_"`,
     )
     .brand<Brand>();
 }
 
-export const CauseIdSchema = opaqueId('cause', 'CauseId');
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export const CauseIdSchema = opaqueId('cause', 'CauseId', ['cause_invitation']);
 export type CauseId = z.infer<typeof CauseIdSchema>;
 
 export const CauseInvitationIdSchema = opaqueId(
@@ -25,7 +38,9 @@ export type CauseInvitationId = z.infer<typeof CauseInvitationIdSchema>;
 export const CampaignIdSchema = opaqueId('campaign', 'CampaignId');
 export type CampaignId = z.infer<typeof CampaignIdSchema>;
 
-export const WorkstreamIdSchema = opaqueId('workstream', 'WorkstreamId');
+export const WorkstreamIdSchema = opaqueId('workstream', 'WorkstreamId', [
+  'workstream_dependency',
+]);
 export type WorkstreamId = z.infer<typeof WorkstreamIdSchema>;
 
 export const WorkstreamDependencyIdSchema = opaqueId(
@@ -39,7 +54,11 @@ export type WorkstreamDependencyId = z.infer<
 export const UserIdSchema = opaqueId('user', 'UserId');
 export type UserId = z.infer<typeof UserIdSchema>;
 
-export const WorkflowIdSchema = opaqueId('workflow', 'WorkflowId');
+export const WorkflowIdSchema = opaqueId('workflow', 'WorkflowId', [
+  'workflow_version',
+  'workflow_schema',
+  'workflow_report',
+]);
 export type WorkflowId = z.infer<typeof WorkflowIdSchema>;
 
 export const WorkflowVersionIdSchema = opaqueId(
@@ -47,6 +66,12 @@ export const WorkflowVersionIdSchema = opaqueId(
   'WorkflowVersionId',
 );
 export type WorkflowVersionId = z.infer<typeof WorkflowVersionIdSchema>;
+
+export const WorkflowReportIdSchema = opaqueId(
+  'workflow_report',
+  'WorkflowReportId',
+);
+export type WorkflowReportId = z.infer<typeof WorkflowReportIdSchema>;
 
 export const WorkflowSchemaIdSchema = opaqueId(
   'workflow_schema',
@@ -69,7 +94,10 @@ export type RunId = z.infer<typeof RunIdSchema>;
 export const ApprovalIdSchema = opaqueId('approval', 'ApprovalId');
 export type ApprovalId = z.infer<typeof ApprovalIdSchema>;
 
-export const ArtifactIdSchema = opaqueId('artifact', 'ArtifactId');
+export const ArtifactIdSchema = opaqueId('artifact', 'ArtifactId', [
+  'artifact_decision',
+  'artifact_export',
+]);
 export type ArtifactId = z.infer<typeof ArtifactIdSchema>;
 
 export const ArtifactDecisionIdSchema = opaqueId(

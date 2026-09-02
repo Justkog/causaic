@@ -2,55 +2,26 @@ import { describe, expect, it } from 'vitest';
 
 import {
   WorkflowCatalogDetailSchema,
+  WorkflowCatalogPublisherSchema,
   WorkflowVersionDetailSchema,
   WorkflowVersionIdSchema,
   WorkflowVersionStatusSchema,
+  validWorkflowCatalogVersionDetailFixture,
 } from './index.js';
 
-const descriptor = (id: string, summary: string) => ({
-  id,
-  dialect: 'https://json-schema.org/draft/2020-12/schema' as const,
-  hash: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-  summary,
-});
-
-const version = {
-  id: 'workflow_version_source-verification-1-0-0',
-  workflowId: 'workflow_source-verification',
-  workflowName: 'Source Verification',
-  version: '1.0.0',
-  status: 'published' as const,
-  summary: 'Verify claims against public evidence.',
-  selectable: true,
-  inputSchema: {
-    ...descriptor(
-      'workflow_schema_source-verification-input-1',
-      'Claim and source references.',
-    ),
-  },
-  outputSchema: {
-    ...descriptor(
-      'workflow_schema_source-verification-output-1',
-      'Structured verification artifact.',
-    ),
-  },
-  capabilityHints: [],
-  objective: 'Verify the supplied claim.',
-  validationPolicy: 'human_confirmation' as const,
-  createdAt: 1,
-};
+const version = validWorkflowCatalogVersionDetailFixture;
 
 describe('workflow catalog protocol', () => {
   it('uses a distinct portable workflow-version identity', () => {
     expect(WorkflowVersionIdSchema.safeParse(version.id).success).toBe(true);
   });
 
-  it('accepts creator-safe version details and rejects executable content', () => {
+  it('accepts the authored execution task and rejects unknown top-level fields', () => {
     expect(WorkflowVersionDetailSchema.safeParse(version).success).toBe(true);
     expect(
       WorkflowVersionDetailSchema.safeParse({
         ...version,
-        instructions: 'run rm -rf',
+        executableContent: 'run rm -rf',
       }).success,
     ).toBe(false);
   });
@@ -64,6 +35,7 @@ describe('workflow catalog protocol', () => {
         summary: version.summary,
         description: 'A workflow.',
         status: 'active',
+        publisher: { kind: 'platform', name: 'Causaic' },
         versions: [
           {
             id: version.id,
@@ -81,5 +53,27 @@ describe('workflow catalog protocol', () => {
       'deprecated',
       'revoked',
     ]);
+  });
+
+  it('accepts both platform and cause publisher projections', () => {
+    expect(
+      WorkflowCatalogPublisherSchema.safeParse({
+        kind: 'platform',
+        name: 'Causaic',
+      }).success,
+    ).toBe(true);
+    expect(
+      WorkflowCatalogPublisherSchema.safeParse({
+        kind: 'cause',
+        causeId: 'cause_public-knowledge',
+        name: 'Public Knowledge Fixture',
+      }).success,
+    ).toBe(true);
+    expect(
+      WorkflowCatalogPublisherSchema.safeParse({
+        kind: 'platform',
+        name: 'Other platform',
+      }).success,
+    ).toBe(false);
   });
 });

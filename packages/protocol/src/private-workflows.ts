@@ -24,6 +24,9 @@ import {
   CapabilityHintSchema,
 } from './agent-task.js';
 import {
+  WorkflowCatalogAuthorVisibilitySchema,
+  WorkflowCatalogModerationStatusSchema,
+  WorkflowCatalogPublisherSchema,
   WorkflowStatusSchema,
   WorkflowVersionStatusSchema,
 } from './workflow-catalog.js';
@@ -151,8 +154,29 @@ export const PrivateWorkflowAllowedActionsSchema = z
   })
   .strict();
 
+export const PrivateWorkflowPublicShareSchema = z
+  .object({
+    targetWorkflowId: WorkflowIdSchema,
+    targetWorkflowVersionId: WorkflowVersionIdSchema,
+    publisher: WorkflowCatalogPublisherSchema,
+    authorVisibility: WorkflowCatalogAuthorVisibilitySchema,
+    moderationStatus: WorkflowCatalogModerationStatusSchema,
+    sharedAt: z.number().int().nonnegative(),
+  })
+  .strict();
+export type PrivateWorkflowPublicShare = z.infer<
+  typeof PrivateWorkflowPublicShareSchema
+>;
+
 export const PrivateWorkflowVersionAllowedActionsSchema = z
-  .object({ edit: z.boolean(), publish: z.boolean(), deprecate: z.boolean() })
+  .object({
+    edit: z.boolean(),
+    publish: z.boolean(),
+    deprecate: z.boolean(),
+    share: z.boolean(),
+    hidePublic: z.boolean(),
+    unhidePublic: z.boolean(),
+  })
   .strict();
 
 export const ManagedPrivateWorkflowSummarySchema = z
@@ -220,6 +244,7 @@ export const ManagedPrivateWorkflowVersionSchema = z
     executionTask: AgentTaskDefinitionSchema,
     validation: WorkflowValidationDefinitionSchema.optional(),
     validationParametersSchemaDocument: WorkflowSchemaDocumentSchema.optional(),
+    publicShare: PrivateWorkflowPublicShareSchema.optional(),
     createdBy: UserIdSchema,
     publishedBy: UserIdSchema.optional(),
     deprecatedBy: UserIdSchema.optional(),
@@ -250,8 +275,15 @@ export const PrivateWorkflowErrorCodeSchema = z.enum([
   'PRIVATE_WORKFLOW_VERSION_ALREADY_EXISTS',
   'PRIVATE_WORKFLOW_VERSION_LIMIT_REACHED',
   'PRIVATE_WORKFLOW_VERSION_IMMUTABLE',
+  'PRIVATE_WORKFLOW_VERSION_NOT_PUBLISHED',
   'INVALID_PRIVATE_WORKFLOW_VERSION_TRANSITION',
   'WORKFLOW_SCHEMA_INVALID',
+  'PRIVATE_WORKFLOW_PUBLIC_SHARE_NOT_FOUND',
+  'PRIVATE_WORKFLOW_PUBLIC_SHARE_TARGET_ARCHIVED',
+  'PRIVATE_WORKFLOW_PUBLIC_SHARE_VERSION_CONFLICT',
+  'PRIVATE_WORKFLOW_PUBLIC_SHARE_SLUG_COLLISION',
+  'PRIVATE_WORKFLOW_PUBLIC_SHARE_HIDDEN',
+  'PRIVATE_WORKFLOW_PUBLIC_SHARE_BANNED',
 ]);
 export type PrivateWorkflowErrorCode = z.infer<
   typeof PrivateWorkflowErrorCodeSchema

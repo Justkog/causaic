@@ -15,6 +15,7 @@ import type {
   WorkflowReferenceSchema,
 } from './schemas.js';
 import { ExecutableWorkflowDefinitionSchema } from './agent-task.js';
+import type { WorkflowVersionDetailSchema } from './workflow-catalog.js';
 
 const fixtureTaskContent = {
   instructions: {
@@ -121,6 +122,27 @@ export const validWorkflowReferenceFixture = {
   packageHash:
     'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
 } satisfies z.input<typeof WorkflowReferenceSchema>;
+
+export const validWorkflowCatalogVersionDetailFixture = {
+  id: validWorkflowReferenceFixture.id,
+  workflowId: validWorkflowReferenceFixture.workflowFamilyId,
+  workflowName: 'Source Verification',
+  version: validWorkflowReferenceFixture.version,
+  status: 'published' as const,
+  summary: 'Verify claims against public evidence.',
+  selectable: true,
+  publisher: { kind: 'platform' as const, name: 'Causaic' },
+  inputSchema:
+    validExecutableWorkflowDefinitionFixture.execution.inputSchema.descriptor,
+  outputSchema:
+    validExecutableWorkflowDefinitionFixture.execution.outputSchema.descriptor,
+  capabilityHints: fixtureTask.capabilityHints,
+  objective: fixtureTask.instructions.objective,
+  validationPolicy: 'human_confirmation' as const,
+  executionTask: fixtureTask,
+  validation: validExecutableWorkflowDefinitionFixture.validation,
+  createdAt: 1,
+} satisfies z.input<typeof WorkflowVersionDetailSchema>;
 
 export const validCampaignFixture = {
   protocolVersion: 1,
