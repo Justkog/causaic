@@ -68,14 +68,12 @@ function expectedServers(siteUrl, clientId) {
       contributor: {
         type: 'http',
         url: contributorUrl,
-        oauth_resource: contributorUrl,
-        oauth_client_id: clientId,
+        oauth: { clientId },
       },
       operator: {
         type: 'http',
         url: operatorUrl,
-        oauth_resource: operatorUrl,
-        oauth_client_id: clientId,
+        oauth: { clientId },
       },
     },
     claude: {
@@ -160,7 +158,7 @@ const contributorClaudeConfig = await readJson(contributorClaudeConfigPath);
 const operatorClaudeConfig = await readJson(operatorClaudeConfigPath);
 const checkedInClientId =
   contributorCodexManifest?.mcpServers?.['causaic-contributor-dev']
-    ?.oauth_client_id;
+    ?.oauth?.clientId;
 const checkedInSiteUrl = contributorCodexManifest?.mcpServers?.[
   'causaic-contributor-dev'
 ]?.url?.replace(/\/mcp\/contributor$/u, '');

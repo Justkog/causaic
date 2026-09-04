@@ -19,8 +19,9 @@
     "causaic-contributor-dev": {
       "type": "http",
       "url": "https://compassionate-swordfish-378.eu-west-1.convex.site/mcp/contributor",
-      "oauth_resource": "https://compassionate-swordfish-378.eu-west-1.convex.site/mcp/contributor",
-      "oauth_client_id": "xgWK8b7J0v9LJvhE"
+      "oauth": {
+        "clientId": "xgWK8b7J0v9LJvhE"
+      }
     }
   }
 }

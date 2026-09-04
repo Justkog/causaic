@@ -56,9 +56,10 @@ pnpm format:check
 ```
 
 The shared `.mcp.json` files contain only the HTTP URL so each host can use its
-own standards-based OAuth discovery. The Codex manifests retain Codex's
-explicit resource/client fields, while the Claude adapters use Claude's
-documented `oauth.clientId` shape. The public
+own standards-based OAuth discovery. The Codex manifests retain the public
+client ID in Codex's documented nested `oauth.clientId` shape and leave the
+resource to discovery, while the Claude adapters use Claude's documented
+`oauth.clientId` shape. The public
 `CLERK_MCP_OAUTH_CLIENT_ID` is safe to check in; no client secret or access
 token belongs in the repository. Supply a rotated public ID explicitly when
 synchronizing:

@@ -23,8 +23,9 @@ Claude Code is not installed in the current validation environment.
   discovery. Add explicit host-specific OAuth metadata only when discovery or
   host validation requires it, and never package secrets or access tokens. The
   shared `.mcp.json` therefore contains only the HTTP URL; the current dev
-  adapters carry the public client ID in Codex's existing fields and Claude's
-  documented `oauth.clientId` because the current Clerk setup has DCR disabled.
+  adapters carry the public client ID in Codex's documented nested
+  `oauth.clientId` field and Claude's documented `oauth.clientId` because the
+  current Clerk setup has DCR disabled.
 - Keep the `causaic-contributor-dev` and `causaic-operator-dev` packages private
   for pre-production validation. Once production endpoints and OAuth
   registration are ready, rename them in place to `causaic-contributor` and
