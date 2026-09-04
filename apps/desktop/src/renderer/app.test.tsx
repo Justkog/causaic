@@ -1,4 +1,8 @@
-import { JobOfferSchema, validJobOfferFixture } from '@causaic/protocol';
+import {
+  JobIdSchema,
+  OpportunityIdSchema,
+  validContributionOpportunitySummaryFixture,
+} from '@causaic/protocol';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,14 +15,14 @@ import {
 import { App } from './app.js';
 import { DesktopStateProvider } from './state-provider.js';
 
-const offer = JobOfferSchema.parse(validJobOfferFixture);
+const opportunity = validContributionOpportunitySummaryFixture;
 
 function state(value: Partial<DesktopState> = {}): DesktopState {
   return DesktopStateSchema.parse({
     ...initialDesktopState(),
     revision: 1,
     connection: { status: 'connected', stale: false },
-    availableJobs: [offer],
+    availableOpportunities: [opportunity],
     ...value,
   });
 }
@@ -28,7 +32,7 @@ function installApi(initial: DesktopState) {
   const startExecution = vi.fn(async () => initial);
   const api: CausaicDesktopApi = {
     getState: async () => initial,
-    refreshJobs: async () => initial,
+    refreshOpportunities: async () => initial,
     startExecution,
     cancelExecution: async () => initial,
     resolveApproval: async () => initial,
@@ -58,7 +62,7 @@ function installApi(initial: DesktopState) {
 describe('desktop renderer', () => {
   beforeEach(() => vi.restoreAllMocks());
 
-  it('hydrates available jobs and requires confirmation before starting', async () => {
+  it('hydrates available opportunities and requires confirmation before starting', async () => {
     const user = userEvent.setup();
     const { startExecution } = installApi(state());
     render(
@@ -66,7 +70,7 @@ describe('desktop renderer', () => {
         <App />
       </DesktopStateProvider>,
     );
-    expect(await screen.findByText(offer.job.objective)).toBeVisible();
+    expect(await screen.findByText(opportunity.objective)).toBeVisible();
     await user.click(screen.getByRole('button', { name: /review and start/i }));
     expect(screen.getByRole('dialog')).toBeVisible();
     expect(startExecution).not.toHaveBeenCalled();
@@ -74,7 +78,7 @@ describe('desktop renderer', () => {
       screen.getByRole('button', { name: /start contribution/i }),
     );
     expect(startExecution).toHaveBeenCalledWith({
-      jobId: offer.job.id,
+      opportunityId: opportunity.id,
     });
   });
 
@@ -86,16 +90,17 @@ describe('desktop renderer', () => {
         <App />
       </DesktopStateProvider>,
     );
-    await screen.findByText(offer.job.objective);
+    await screen.findByText(opportunity.objective);
     await user.click(screen.getByRole('button', { name: /^execution$/i }));
     expect(screen.getByText(/no active execution/i)).toBeVisible();
     installed.push(
       state({
         revision: 2,
         currentExecution: {
-          jobId: offer.job.id,
-          objective: offer.job.objective,
-          campaignName: offer.campaign.name,
+          opportunityId: OpportunityIdSchema.parse(opportunity.id),
+          jobId: JobIdSchema.parse('job_runner-core-test'),
+          objective: opportunity.objective,
+          campaignName: opportunity.campaign.name,
           status: 'running',
           startedAt: '2030-01-01T12:00:00Z',
           progressMessage: 'Reading public source',

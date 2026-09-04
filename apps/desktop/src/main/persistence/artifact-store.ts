@@ -31,7 +31,7 @@ export interface DesktopArtifactStoreOptions {
   readonly rootDirectory: string;
   readonly repositories: DesktopRepositories;
   readonly executionId: LocalExecutionId;
-  readonly jobId: JobId;
+  readonly jobId: () => JobId;
   readonly runId: () => RunId | undefined;
   readonly now?: () => number;
   readonly createId?: () => string;
@@ -96,7 +96,7 @@ export class DesktopArtifactStore implements LocalArtifactStore {
     this.#options.repositories.persistArtifact({
       id: artifactId,
       executionId: this.#options.executionId,
-      jobId: this.#options.jobId,
+      jobId: this.#options.jobId(),
       ...(runId === undefined ? {} : { runId }),
       relativePath,
       contentHash,

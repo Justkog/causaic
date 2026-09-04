@@ -1,11 +1,19 @@
 import {
   ArtifactIdSchema,
   ExecutorIdSchema,
+  LeaseIdSchema,
   MessageIdSchema,
   NodeIdSchema,
+  RunIdSchema,
   UserIdSchema,
 } from '@causaic/protocol';
-import type { JobId, JobLease, JsonValue } from '@causaic/protocol';
+import type {
+  ClaimedContribution,
+  JobId,
+  JsonValue,
+  NodeId,
+  OpportunityId,
+} from '@causaic/protocol';
 import { sha256Json } from '@causaic/workflow-schema';
 import { describe, expect, it } from 'vitest';
 
@@ -14,24 +22,72 @@ import type { JobCoordinator } from './coordinator.js';
 export interface JobCoordinatorTestHarness {
   readonly coordinator: JobCoordinator;
   readonly jobId: JobId;
+  /** Node identity used by coordinators that bind claims to a configured node. */
+  readonly nodeId?: NodeId;
   readonly artifact: JsonValue;
 }
 
 export function defineJobCoordinatorContract(
   createHarness: () => Promise<JobCoordinatorTestHarness>,
 ): void {
-  const acquire = async (harness: JobCoordinatorTestHarness) =>
-    harness.coordinator.acquireLease({
-      jobId: harness.jobId,
-      nodeId: NodeIdSchema.parse('node_contract'),
+  const opportunityIds = new WeakMap<
+    JobCoordinatorTestHarness,
+    OpportunityId
+  >();
+  const claimIds = new WeakMap<
+    JobCoordinatorTestHarness,
+    {
+      leaseId: ReturnType<typeof LeaseIdSchema.parse>;
+      runId: ReturnType<typeof RunIdSchema.parse>;
+    }
+  >();
+  const claim = async (
+    harness: JobCoordinatorTestHarness,
+    overrides: Partial<{
+      leaseId: ReturnType<typeof LeaseIdSchema.parse>;
+      runId: ReturnType<typeof RunIdSchema.parse>;
+    }> = {},
+  ) => {
+    let opportunityId = opportunityIds.get(harness);
+    if (opportunityId === undefined) {
+      const opportunities =
+        await harness.coordinator.listAvailableOpportunities({});
+      const opportunity = opportunities[0];
+      if (opportunity === undefined)
+        throw new Error('Coordinator contract opportunity is missing');
+      opportunityId = opportunity.id;
+      opportunityIds.set(harness, opportunityId);
+    }
+    let identities = claimIds.get(harness);
+    if (identities === undefined) {
+      identities = {
+        leaseId: LeaseIdSchema.parse(
+          `lease_contract-${harness.jobId.slice('job_'.length)}`,
+        ),
+        runId: RunIdSchema.parse(
+          `run_contract-${harness.jobId.slice('job_'.length)}`,
+        ),
+      };
+      claimIds.set(harness, identities);
+    }
+    return harness.coordinator.claimOpportunity({
+      opportunityId,
+      leaseId: overrides.leaseId ?? identities.leaseId,
+      runId: overrides.runId ?? identities.runId,
+      nodeId: harness.nodeId ?? NodeIdSchema.parse('node_contract'),
       executorId: ExecutorIdSchema.parse('executor_contract'),
       contributorId: UserIdSchema.parse('user_contract'),
       executorType: 'plugin_host',
       durationMs: 60_000,
     });
-  const start = async (harness: JobCoordinatorTestHarness, lease: JobLease) => {
+  };
+  const start = async (
+    harness: JobCoordinatorTestHarness,
+    contribution: ClaimedContribution,
+  ) => {
+    const lease = contribution.lease;
     await harness.coordinator.startRun({
-      jobId: harness.jobId,
+      jobId: contribution.job.id,
       leaseId: lease.id,
       runId: lease.runId,
     });
@@ -41,7 +97,7 @@ export function defineJobCoordinatorContract(
         protocolVersion: 1,
         messageType: 'job.progress',
         messageId: MessageIdSchema.parse('message_contract-running'),
-        jobId: harness.jobId,
+        jobId: contribution.job.id,
         runId: lease.runId,
         sequence: 1,
         occurredAt: lease.leasedAt,
@@ -52,31 +108,48 @@ export function defineJobCoordinatorContract(
   };
 
   describe('JobCoordinator contract', () => {
-    it('lists and acquires an available job', async () => {
+    it('lists and claims an available opportunity', async () => {
       const harness = await createHarness();
-      await expect(
-        harness.coordinator.listAvailableJobs({}),
-      ).resolves.toHaveLength(1);
-      await expect(acquire(harness)).resolves.toMatchObject({
-        jobId: harness.jobId,
-        status: 'active',
+      const opportunities =
+        await harness.coordinator.listAvailableOpportunities({});
+      expect(opportunities).toHaveLength(1);
+      await expect(claim(harness)).resolves.toMatchObject({
+        opportunityId: opportunities[0]?.id,
+        job: { id: harness.jobId },
+        lease: { jobId: harness.jobId, status: 'active' },
       });
     });
 
     it('allows only one active lease', async () => {
       const harness = await createHarness();
-      await acquire(harness);
-      await expect(acquire(harness)).rejects.toMatchObject({
+      await claim(harness);
+      await expect(
+        claim(harness, {
+          leaseId: LeaseIdSchema.parse('lease_contract-conflict'),
+          runId: RunIdSchema.parse('run_contract-conflict'),
+        }),
+      ).rejects.toMatchObject({
         code: 'lease_conflict',
+      });
+    });
+
+    it('returns the original claim for an exact retry', async () => {
+      const harness = await createHarness();
+      const first = await claim(harness);
+      await expect(claim(harness)).resolves.toMatchObject({
+        opportunityId: first.opportunityId,
+        job: { id: first.job.id },
+        lease: { id: first.lease.id, runId: first.lease.runId },
       });
     });
 
     it('requires a valid lease to start a run', async () => {
       const harness = await createHarness();
-      const lease = await acquire(harness);
+      const contribution = await claim(harness);
+      const lease = contribution.lease;
       await expect(
         harness.coordinator.startRun({
-          jobId: harness.jobId,
+          jobId: contribution.job.id,
           leaseId: lease.id,
           runId: lease.runId,
         }),
@@ -85,13 +158,14 @@ export function defineJobCoordinatorContract(
 
     it('handles duplicate and stale progress deterministically', async () => {
       const harness = await createHarness();
-      const lease = await acquire(harness);
-      await start(harness, lease);
+      const contribution = await claim(harness);
+      const lease = contribution.lease;
+      await start(harness, contribution);
       const stale = {
         protocolVersion: 1 as const,
         messageType: 'job.progress' as const,
         messageId: MessageIdSchema.parse('message_contract-stale'),
-        jobId: harness.jobId,
+        jobId: contribution.job.id,
         runId: lease.runId,
         sequence: 0,
         occurredAt: lease.leasedAt,
@@ -108,8 +182,9 @@ export function defineJobCoordinatorContract(
 
     it('pauses for approval and permits one resolution', async () => {
       const harness = await createHarness();
-      const lease = await acquire(harness);
-      await start(harness, lease);
+      const contribution = await claim(harness);
+      const lease = contribution.lease;
+      await start(harness, contribution);
       const approval = await harness.coordinator.requestApproval({
         leaseId: lease.id,
         runId: lease.runId,
@@ -137,8 +212,9 @@ export function defineJobCoordinatorContract(
 
     it('requires an artifact and completes with a valid artifact', async () => {
       const harness = await createHarness();
-      const lease = await acquire(harness);
-      await start(harness, lease);
+      const contribution = await claim(harness);
+      const lease = contribution.lease;
+      await start(harness, contribution);
       const approval = await harness.coordinator.requestApproval({
         leaseId: lease.id,
         runId: lease.runId,
@@ -164,7 +240,7 @@ export function defineJobCoordinatorContract(
           protocolVersion: 1,
           messageType: 'job.progress',
           messageId: MessageIdSchema.parse('message_contract-validating'),
-          jobId: harness.jobId,
+          jobId: contribution.job.id,
           runId: lease.runId,
           sequence: 2,
           occurredAt: lease.leasedAt,
@@ -175,14 +251,14 @@ export function defineJobCoordinatorContract(
       const artifactId = ArtifactIdSchema.parse('artifact_contract');
       await expect(
         harness.coordinator.completeRun({
-          jobId: harness.jobId,
+          jobId: contribution.job.id,
           leaseId: lease.id,
           runId: lease.runId,
           artifactId,
         }),
       ).rejects.toMatchObject({ code: 'artifact_rejected' });
       await harness.coordinator.submitArtifact({
-        jobId: harness.jobId,
+        jobId: contribution.job.id,
         leaseId: lease.id,
         runId: lease.runId,
         artifactId,
@@ -191,31 +267,33 @@ export function defineJobCoordinatorContract(
       });
       await expect(
         harness.coordinator.completeRun({
-          jobId: harness.jobId,
+          jobId: contribution.job.id,
           leaseId: lease.id,
           runId: lease.runId,
           artifactId,
         }),
       ).resolves.toBeUndefined();
       await expect(
-        harness.coordinator.listAvailableJobs({}),
+        harness.coordinator.listAvailableOpportunities({}),
       ).resolves.toHaveLength(0);
     });
 
     it('returns an unfinished released job to availability', async () => {
       const harness = await createHarness();
-      const lease = await acquire(harness);
-      await start(harness, lease);
+      const contribution = await claim(harness);
+      const lease = contribution.lease;
+      await start(harness, contribution);
       await harness.coordinator.releaseLease({ leaseId: lease.id });
       await expect(
-        harness.coordinator.listAvailableJobs({}),
+        harness.coordinator.listAvailableOpportunities({}),
       ).resolves.toHaveLength(1);
     });
 
     it('preserves retryable run failures for reassignment', async () => {
       const harness = await createHarness();
-      const lease = await acquire(harness);
-      await start(harness, lease);
+      const contribution = await claim(harness);
+      const lease = contribution.lease;
+      await start(harness, contribution);
       await harness.coordinator.failRun({
         leaseId: lease.id,
         runId: lease.runId,
@@ -227,7 +305,7 @@ export function defineJobCoordinatorContract(
         },
       });
       await expect(
-        harness.coordinator.getJobState({ jobId: harness.jobId }),
+        harness.coordinator.getJobState({ jobId: contribution.job.id }),
       ).resolves.toMatchObject({
         status: 'available',
         run: {
@@ -239,14 +317,15 @@ export function defineJobCoordinatorContract(
         },
       });
       await expect(
-        harness.coordinator.listAvailableJobs({}),
+        harness.coordinator.listAvailableOpportunities({}),
       ).resolves.toHaveLength(1);
     });
 
     it('preserves final run failures as terminal', async () => {
       const harness = await createHarness();
-      const lease = await acquire(harness);
-      await start(harness, lease);
+      const contribution = await claim(harness);
+      const lease = contribution.lease;
+      await start(harness, contribution);
       await harness.coordinator.failRun({
         leaseId: lease.id,
         runId: lease.runId,
@@ -258,7 +337,7 @@ export function defineJobCoordinatorContract(
         },
       });
       await expect(
-        harness.coordinator.getJobState({ jobId: harness.jobId }),
+        harness.coordinator.getJobState({ jobId: contribution.job.id }),
       ).resolves.toMatchObject({
         status: 'failed_final',
         run: {
@@ -267,7 +346,7 @@ export function defineJobCoordinatorContract(
         },
       });
       await expect(
-        harness.coordinator.listAvailableJobs({}),
+        harness.coordinator.listAvailableOpportunities({}),
       ).resolves.toHaveLength(0);
     });
   });

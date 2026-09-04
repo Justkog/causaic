@@ -20,7 +20,10 @@ export function hydrateCurrentExecution(
     }),
   );
   return {
-    jobId: execution.jobId,
+    ...(execution.opportunityId === null
+      ? {}
+      : { opportunityId: execution.opportunityId }),
+    ...(execution.jobId === null ? {} : { jobId: execution.jobId }),
     objective: execution.objective,
     campaignName: execution.campaignName,
     status:
@@ -59,7 +62,10 @@ export function hydrateRecentExecution(
         ? 'cancelled'
         : 'failed';
   return {
-    jobId: execution.jobId,
+    ...(execution.opportunityId === null
+      ? {}
+      : { opportunityId: execution.opportunityId }),
+    ...(execution.jobId === null ? {} : { jobId: execution.jobId }),
     status,
     finishedAt: new Date(execution.terminalAt).toISOString(),
     message:

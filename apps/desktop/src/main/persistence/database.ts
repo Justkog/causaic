@@ -7,7 +7,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 
 import * as schema from './schema.js';
 
-export const CURRENT_LOCAL_SCHEMA_VERSION = 3;
+export const CURRENT_LOCAL_SCHEMA_VERSION = 5;
 
 export interface DesktopDataPaths {
   readonly root: string;

@@ -1,7 +1,7 @@
 interface:
-  display_name: 'Execute a Causaic job'
-  short_description: 'Run a Causaic job through its safe MCP lifecycle.'
-  default_prompt: 'Use $execute-causaic-job to execute a Causaic job from discovery through completion.'
+  display_name: 'Execute a Causaic contribution'
+  short_description: 'Run a Causaic contribution through its safe MCP lifecycle.'
+  default_prompt: 'Use $execute-causaic-job to execute a Causaic contribution from discovery through completion.'
 dependencies:
   tools:
     - type: 'mcp'

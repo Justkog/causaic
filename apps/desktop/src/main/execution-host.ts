@@ -6,7 +6,14 @@ import {
   ArtifactIdSchema,
   MessageIdSchema,
 } from '@causaic/protocol';
-import type { ExecutorId, JobOffer, NodeId, UserId } from '@causaic/protocol';
+import type {
+  ContributionOpportunitySummary,
+  ExecutorId,
+  LeaseId,
+  NodeId,
+  RunId,
+  UserId,
+} from '@causaic/protocol';
 import {
   LocalRunnerService,
   WorkflowArtifactValidator,
@@ -29,12 +36,14 @@ import type { DesktopRepositories } from './persistence/repositories.js';
 
 export interface DesktopExecutionStartContext {
   readonly executionId: LocalExecutionId;
+  readonly leaseId: LeaseId;
+  readonly runId: RunId;
   readonly afterEvent: (event: RunnerEvent) => Promise<void>;
 }
 
 export interface DesktopExecutionHost {
   start(
-    offer: JobOffer,
+    opportunity: ContributionOpportunitySummary,
     context: DesktopExecutionStartContext,
   ): Promise<RunningExecution>;
 }
@@ -80,7 +89,7 @@ export class InProcessExecutionHost implements DesktopExecutionHost {
   }
 
   public async start(
-    offer: JobOffer,
+    opportunity: ContributionOpportunitySummary,
     context: DesktopExecutionStartContext,
   ): Promise<RunningExecution> {
     const installation = (await this.#runtime.detect()).find(
@@ -117,7 +126,17 @@ export class InProcessExecutionHost implements DesktopExecutionHost {
             rootDirectory: this.#options.artifactRoot,
             repositories: this.#options.repositories,
             executionId: context.executionId,
-            jobId: offer.job.id,
+            jobId: () => {
+              const jobId = this.#options.repositories?.execution(
+                context.executionId,
+              )?.jobId;
+              if (jobId === undefined || jobId === null)
+                throw new DesktopError(
+                  'internal_failure',
+                  'The claimed job is not available for artifact storage.',
+                );
+              return jobId;
+            },
             runId: () =>
               this.#options.repositories?.execution(context.executionId)
                 ?.runId ?? undefined,
@@ -143,7 +162,9 @@ export class InProcessExecutionHost implements DesktopExecutionHost {
       afterEvent: context.afterEvent,
     });
     return service.start({
-      offer,
+      opportunity,
+      leaseId: context.leaseId,
+      runId: context.runId,
       installation,
       executorId: this.#options.executorId,
       nodeId: this.#options.nodeId,

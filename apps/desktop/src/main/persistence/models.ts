@@ -5,6 +5,7 @@ import {
   JobIdSchema,
   LeaseIdSchema,
   NodeIdSchema,
+  OpportunityIdSchema,
   RunIdSchema,
 } from '@causaic/protocol';
 import { z } from 'zod';
@@ -51,6 +52,12 @@ const OperationBaseSchema = z.object({
 });
 
 export const PendingOperationPayloadSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('claim_opportunity'),
+    opportunityId: OpportunityIdSchema,
+    leaseId: LeaseIdSchema,
+    runId: RunIdSchema,
+  }),
   OperationBaseSchema.extend({ kind: z.literal('acquire_lease') }),
   OperationBaseSchema.extend({
     kind: z.literal('start_run'),
@@ -105,30 +112,36 @@ export type PendingOperationPayload = z.infer<
   typeof PendingOperationPayloadSchema
 >;
 
-export const PersistedExecutionSchema = z.object({
-  id: LocalExecutionIdSchema,
-  jobId: JobIdSchema,
-  leaseId: LeaseIdSchema.nullable(),
-  runId: RunIdSchema.nullable(),
-  nodeId: NodeIdSchema,
-  executorId: ExecutorIdSchema,
-  runtimeType: z.string().trim().min(1),
-  objective: z.string().trim().min(1),
-  campaignName: z.string().trim().min(1),
-  lifecycleStatus: ExecutionLifecycleStatusSchema,
-  recoveryStatus: ExecutionRecoveryStatusSchema,
-  lastRunnerSequence: z.number().int(),
-  lastProgressSequence: z.number().int(),
-  progressMessage: z.string().nullable(),
-  lastConfirmedRemoteStage: z.string().nullable(),
-  remoteSnapshotJson: z.string().nullable(),
-  failureCode: z.string().nullable(),
-  failureMessage: z.string().nullable(),
-  retryable: z.boolean().nullable(),
-  cancellationRequestedAt: z.number().int().nullable(),
-  startedAt: z.number().int(),
-  updatedAt: z.number().int(),
-  terminalAt: z.number().int().nullable(),
-  terminalNotifiedAt: z.number().int().nullable(),
-});
+export const PersistedExecutionSchema = z
+  .object({
+    id: LocalExecutionIdSchema,
+    opportunityId: OpportunityIdSchema.nullable(),
+    jobId: JobIdSchema.nullable(),
+    leaseId: LeaseIdSchema.nullable(),
+    runId: RunIdSchema.nullable(),
+    nodeId: NodeIdSchema,
+    executorId: ExecutorIdSchema,
+    runtimeType: z.string().trim().min(1),
+    objective: z.string().trim().min(1),
+    campaignName: z.string().trim().min(1),
+    lifecycleStatus: ExecutionLifecycleStatusSchema,
+    recoveryStatus: ExecutionRecoveryStatusSchema,
+    lastRunnerSequence: z.number().int(),
+    lastProgressSequence: z.number().int(),
+    progressMessage: z.string().nullable(),
+    lastConfirmedRemoteStage: z.string().nullable(),
+    remoteSnapshotJson: z.string().nullable(),
+    failureCode: z.string().nullable(),
+    failureMessage: z.string().nullable(),
+    retryable: z.boolean().nullable(),
+    cancellationRequestedAt: z.number().int().nullable(),
+    startedAt: z.number().int(),
+    updatedAt: z.number().int(),
+    terminalAt: z.number().int().nullable(),
+    terminalNotifiedAt: z.number().int().nullable(),
+  })
+  .refine(
+    ({ opportunityId, jobId }) => opportunityId !== null || jobId !== null,
+    'A persisted execution must have an opportunity ID or job ID',
+  );
 export type PersistedExecution = z.infer<typeof PersistedExecutionSchema>;

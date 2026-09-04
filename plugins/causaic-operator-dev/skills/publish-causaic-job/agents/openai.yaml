@@ -1,7 +1,7 @@
 interface:
-  display_name: 'Publish a Causaic job'
-  short_description: 'Configure and publish a valid Causaic job.'
-  default_prompt: 'Use $publish-causaic-job to configure and publish a Causaic job.'
+  display_name: 'Publish Causaic contributor work'
+  short_description: 'Configure manual or input-driven contributor work.'
+  default_prompt: 'Use $publish-causaic-job to configure Causaic contributor work, preferring dataset-backed input inventory when appropriate.'
 dependencies:
   tools:
     - type: 'mcp'

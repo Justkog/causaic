@@ -1,6 +1,5 @@
 import {
   CoordinatorError,
-  type AcquireLeaseRequest,
   type ArtifactRecord,
   type CompleteRunRequest,
   type CoordinatorFixtures,
@@ -12,7 +11,7 @@ import {
   type JobCoordinator,
   type JobRecoverySnapshot,
   type JobRun,
-  type ListAvailableJobsRequest,
+  type ListAvailableOpportunitiesRequest,
   type ListNodeActiveExecutionsRequest,
   type ReleaseLeaseRequest,
   type RenewLeaseRequest,
@@ -27,13 +26,13 @@ import {
   ArtifactIdSchema,
   ArtifactManifestSchema,
   CampaignSchema,
+  ClaimedContributionSchema,
+  ContributionOpportunitySummarySchema,
   JobLeaseSchema,
-  JobOfferSchema,
   JobProgressEventSchema,
-  LeaseIdSchema,
   MessageIdSchema,
   NodeIdSchema,
-  RunIdSchema,
+  OpportunityIdSchema,
   JobDefinitionSchema,
   JobStateSchema,
 } from '@causaic/protocol';
@@ -42,9 +41,11 @@ import type {
   ApprovalRequest,
   ArtifactId,
   Campaign,
+  ClaimOpportunityRequest,
+  ClaimedContribution,
+  ContributionOpportunitySummary,
   JobId,
   JobLease,
-  JobOffer,
   JobStatus,
   JobDefinition,
   JobState,
@@ -89,6 +90,7 @@ function initialState(job: JobDefinition, campaign: Campaign): JobState {
 /** Deterministic public test adapter; the hosted coordinator remains authoritative. */
 export class MemoryJobCoordinator implements JobCoordinator {
   private readonly jobs = new Map<JobId, StoredJob>();
+  private readonly opportunityToJob = new Map<string, JobId>();
   private readonly leaseToJob = new Map<LeaseId, JobId>();
   private readonly runToJob = new Map<RunId, JobId>();
   private readonly workflowDefinitions = new Map<
@@ -122,12 +124,16 @@ export class MemoryJobCoordinator implements JobCoordinator {
         progressBySequence: new Map(),
         artifacts: new Map(),
       });
+      this.opportunityToJob.set(
+        this.opportunityIdFor(definition.id),
+        definition.id,
+      );
     }
   }
 
-  public async listAvailableJobs(
-    request: ListAvailableJobsRequest,
-  ): Promise<readonly JobOffer[]> {
+  public async listAvailableOpportunities(
+    request: ListAvailableOpportunitiesRequest,
+  ): Promise<readonly ContributionOpportunitySummary[]> {
     return [...this.jobs.values()]
       .filter(
         ({ definition, campaign, state }) =>
@@ -137,14 +143,53 @@ export class MemoryJobCoordinator implements JobCoordinator {
             definition.supportedExecutorTypes.includes(request.executorType)),
       )
       .map(({ definition, campaign }) =>
-        JobOfferSchema.parse(this.offerFor(definition, campaign)),
+        ContributionOpportunitySummarySchema.parse(
+          this.opportunityFor(definition, campaign),
+        ),
       );
   }
 
-  public async acquireLease(request: AcquireLeaseRequest): Promise<JobLease> {
-    const stored = this.job(request.jobId);
+  public async claimOpportunity(
+    request: ClaimOpportunityRequest,
+  ): Promise<ClaimedContribution> {
+    const jobId = this.opportunityToJob.get(request.opportunityId);
+    if (jobId === undefined)
+      throw new CoordinatorError(
+        'job_unavailable',
+        'Opportunity is not available',
+      );
+    const stored = this.job(jobId);
     const acquiredAt = this.instant();
-    if (stored.state.lease?.status === 'active')
+    const existingLease = stored.state.lease;
+    if (existingLease?.id === request.leaseId) {
+      if (
+        existingLease.runId !== request.runId ||
+        existingLease.executorId !== request.executorId ||
+        existingLease.contributorId !== request.contributorId ||
+        stored.leaseNodeId !== request.nodeId ||
+        (stored.leaseExecutorType ?? 'plugin_host') !== request.executorType
+      )
+        throw new CoordinatorError(
+          'lease_conflict',
+          'The supplied claim identities belong to a different execution',
+        );
+      if (
+        existingLease.status === 'active' &&
+        this.options.now() < Date.parse(existingLease.expiresAt)
+      )
+        return ClaimedContributionSchema.parse({
+          opportunityId: request.opportunityId,
+          job: stored.definition,
+          lease: this.publicLease(stored),
+        });
+      if (existingLease.status === 'active')
+        throw new CoordinatorError(
+          'lease_expired',
+          'Lease is no longer active',
+        );
+      throw new CoordinatorError('lease_conflict', 'Lease is no longer active');
+    }
+    if (existingLease?.status === 'active')
       throw new CoordinatorError(
         'lease_conflict',
         'Job already has an active lease',
@@ -171,8 +216,8 @@ export class MemoryJobCoordinator implements JobCoordinator {
         'job_unavailable',
         'Job attempt limit reached',
       );
-    const leaseId = LeaseIdSchema.parse(this.id('lease'));
-    const runId = RunIdSchema.parse(this.id('run'));
+    const leaseId = request.leaseId;
+    const runId = request.runId;
     const expiresAt = new Date(
       this.options.now() + request.durationMs,
     ).toISOString();
@@ -195,21 +240,32 @@ export class MemoryJobCoordinator implements JobCoordinator {
     stored.leaseNodeId = request.nodeId;
     stored.leaseHeartbeatAt = acquiredAt;
     stored.leaseExecutorType = request.executorType;
-    this.leaseToJob.set(leaseId, request.jobId);
-    this.runToJob.set(runId, request.jobId);
+    this.leaseToJob.set(leaseId, jobId);
+    this.runToJob.set(runId, jobId);
+    const lease = this.publicLease(stored);
+    return ClaimedContributionSchema.parse({
+      opportunityId: request.opportunityId,
+      job: stored.definition,
+      lease,
+    });
+  }
+
+  private publicLease(stored: StoredJob): JobLease {
+    const lease = stored.state.lease;
+    if (lease === undefined) throw new Error('The job has no lease');
     return JobLeaseSchema.parse({
       protocolVersion: 1,
       messageType: 'job.lease',
       messageId: MessageIdSchema.parse(this.id('message')),
-      id: leaseId,
-      jobId: request.jobId,
-      runId,
-      executorId: request.executorId,
-      contributorId: request.contributorId,
-      executorType: request.executorType,
-      status: 'active',
-      leasedAt: acquiredAt,
-      expiresAt: stored.state.lease?.expiresAt,
+      id: lease.id,
+      jobId: stored.state.id,
+      runId: lease.runId,
+      executorId: lease.executorId,
+      contributorId: lease.contributorId,
+      executorType: stored.leaseExecutorType ?? 'plugin_host',
+      status: lease.status,
+      leasedAt: lease.acquiredAt,
+      expiresAt: lease.expiresAt,
     });
   }
 
@@ -657,31 +713,39 @@ export class MemoryJobCoordinator implements JobCoordinator {
     );
   }
 
-  private offerFor(definition: JobDefinition, campaign: Campaign) {
-    const offeredAt = this.instant();
+  private opportunityFor(definition: JobDefinition, campaign: Campaign) {
     return {
-      protocolVersion: 1 as const,
-      messageType: 'job.offer' as const,
-      messageId: MessageIdSchema.parse(this.id('message')),
-      id: `offer_${definition.id.slice(4)}`,
-      campaign,
-      workstream: {
-        protocolVersion: 1 as const,
-        messageType: 'campaign.workstream' as const,
-        id: definition.workstreamId,
-        campaignId: campaign.id,
-        name: 'Source verification',
-        workflow: definition.workflow,
-        status: 'active' as const,
-        availabilityPolicy: { type: 'manual' as const },
-        inventoryPolicy: { type: 'manual_jobs' as const },
-        participationPolicy: {},
-        completionPolicy: { type: 'all_jobs_completed' as const },
+      id: OpportunityIdSchema.parse(this.opportunityIdFor(definition.id)),
+      cause: { id: definition.causeId, name: campaign.name },
+      campaign: {
+        id: campaign.id,
+        name: campaign.name,
+        objective: campaign.name,
       },
-      job: { ...definition, status: 'available' as const },
-      offeredAt,
-      expiresAt: new Date(this.options.now() + 10 * 60_000).toISOString(),
+      workstream: {
+        id: definition.workstreamId,
+        name: 'Source verification',
+      },
+      title: definition.objective,
+      objective: definition.objective,
+      workflow: {
+        reference: definition.workflow,
+        requirements: definition.workflowRequirements,
+      },
+      requiredAcceptedRuns: definition.requiredAcceptedRuns,
+      priority: 'medium' as const,
+      estimatedDurationMinutes: definition.estimatedDurationMinutes,
+      capacityClass: definition.capacityClass,
+      supportedExecutorTypes: definition.supportedExecutorTypes,
+      requiresPersistentRunner: definition.requiresPersistentRunner,
+      requiresCheckpointRecovery: definition.requiresCheckpointRecovery,
+      createdAt: Date.parse(definition.createdAt),
+      updatedAt: Date.parse(definition.createdAt),
     };
+  }
+
+  private opportunityIdFor(jobId: JobId): string {
+    return `opportunity_job-${jobId.slice('job_'.length)}`;
   }
 
   private applyPhase(stored: StoredJob, status: JobStatus): void {

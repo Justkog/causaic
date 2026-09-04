@@ -123,7 +123,7 @@ function notifyExecution(kind: DesktopNotificationKind): void {
   const messages: Record<DesktopNotificationKind, [string, string]> = {
     execution_started: [
       'Contribution started',
-      'Causaic has started the selected job.',
+      'Causaic has started the selected opportunity.',
     ],
     approval_required: [
       'Approval required',
@@ -162,7 +162,9 @@ async function confirmCancellation(message: string): Promise<boolean> {
 async function requestCancel(): Promise<void> {
   if (controller?.hasActiveExecution() !== true) return;
   if (
-    !(await confirmCancellation('The job will be returned for reassignment.'))
+    !(await confirmCancellation(
+      'The opportunity will be returned for reassignment.',
+    ))
   )
     return;
   await controller.cancel('Cancelled from the desktop application');
@@ -323,7 +325,7 @@ async function bootstrap(): Promise<void> {
     monitor = new BackendMonitor({
       coordinator,
       state,
-      onNewJobs: (count) =>
+      onNewOpportunities: (count) =>
         notify(
           'New work available',
           `${count} new contribution${count === 1 ? ' is' : 's are'} ready.`,
@@ -388,6 +390,8 @@ async function bootstrap(): Promise<void> {
       state,
       nodeId: config.nodeExternalId,
       executorId: config.executorId,
+      contributorId: config.contributorId,
+      leaseDurationMs: config.defaultLeaseDurationMs,
       artifactRoot: paths.artifacts,
     });
     recoveryReference.current = recovery;

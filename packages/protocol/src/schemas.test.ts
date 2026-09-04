@@ -5,11 +5,14 @@ import {
   ApprovalRequestSchema,
   ArtifactManifestSchema,
   CampaignSchema,
+  ClaimOpportunityRequestSchema,
+  ClaimedContributionSchema,
   CampaignStatusSchema,
   CauseSchema,
+  ContributionOpportunityDetailSchema,
+  ContributionOpportunitySummarySchema,
   invalidProtocolFixtures,
   JobLeaseSchema,
-  JobOfferSchema,
   JobProgressEventSchema,
   JobStatusSchema,
   ProtocolMessageSchema,
@@ -18,11 +21,12 @@ import {
   validApprovalRequestFixture,
   validArtifactManifestFixture,
   validCampaignFixture,
+  validClaimedContributionFixture,
+  validContributionOpportunitySummaryFixture,
   validCauseFixture,
   validCompletionEventFixture,
   validFailureEventFixture,
   validJobLeaseFixture,
-  validJobOfferFixture,
   validProgressEventFixture,
   validSourceVerificationJobFixture,
   validWorkflowReferenceFixture,
@@ -39,8 +43,12 @@ const validSchemaExamples = [
   [WorkflowReferenceSchema, validWorkflowReferenceFixture],
   [CampaignSchema, validCampaignFixture],
   [JobDefinitionSchema, validSourceVerificationJobFixture],
-  [JobOfferSchema, validJobOfferFixture],
   [JobLeaseSchema, validJobLeaseFixture],
+  [
+    ContributionOpportunitySummarySchema,
+    validContributionOpportunitySummaryFixture,
+  ],
+  [ClaimedContributionSchema, validClaimedContributionFixture],
   [JobProgressEventSchema, validProgressEventFixture],
   [ApprovalRequestSchema, validApprovalRequestFixture],
   [ApprovalDecisionSchema, validApprovalDecisionFixture],
@@ -96,6 +104,45 @@ describe('protocol version 1 schemas', () => {
       ApprovalRequestSchema.safeParse({
         ...validApprovalRequestFixture,
         approvalType: 'network_access',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('keeps opportunity discovery source-neutral and separates detail input', () => {
+    expect(
+      ContributionOpportunitySummarySchema.safeParse({
+        ...validContributionOpportunitySummaryFixture,
+        backing: { type: 'job', jobId: validSourceVerificationJobFixture.id },
+      }).success,
+    ).toBe(false);
+    expect(
+      ContributionOpportunityDetailSchema.safeParse({
+        ...validContributionOpportunitySummaryFixture,
+        input: validSourceVerificationJobFixture.input,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('does not expose generation source keys in contributor job definitions', () => {
+    expect(
+      JobDefinitionSchema.safeParse({
+        ...validSourceVerificationJobFixture,
+        sourceItemKey: 'row-1',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('validates an opportunity claim request without a backing job id', () => {
+    expect(
+      ClaimOpportunityRequestSchema.safeParse({
+        opportunityId: validContributionOpportunitySummaryFixture.id,
+        leaseId: 'lease_contract',
+        runId: 'run_contract',
+        nodeId: 'node_contract',
+        executorId: 'executor_contract',
+        contributorId: 'user_contract',
+        executorType: 'plugin_host',
+        durationMs: 60_000,
       }).success,
     ).toBe(true);
   });
@@ -168,7 +215,6 @@ describe('protocol version 1 schemas', () => {
     for (const fixture of [
       validCampaignFixture,
       validSourceVerificationJobFixture,
-      validJobOfferFixture,
       validJobLeaseFixture,
       validProgressEventFixture,
       validApprovalRequestFixture,
@@ -179,6 +225,15 @@ describe('protocol version 1 schemas', () => {
     ]) {
       expect(ProtocolMessageSchema.safeParse(fixture).success).toBe(true);
     }
+  });
+
+  it('rejects the removed job-offer message type', () => {
+    expect(
+      ProtocolMessageSchema.safeParse({
+        ...validSourceVerificationJobFixture,
+        messageType: 'job.offer',
+      }).success,
+    ).toBe(false);
   });
 
   it('validates portable execution state and failure reasons', () => {

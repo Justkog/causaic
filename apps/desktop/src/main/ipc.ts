@@ -54,7 +54,6 @@ function allowedExternalUrls(state: ReturnType<DesktopStateStore['get']>) {
     return [];
   };
   return new Set([
-    ...state.availableJobs.flatMap(({ job }) => urls(job.input)),
     ...urls(state.recentExecution?.artifact?.content),
   ]);
 }
@@ -84,7 +83,7 @@ export function registerDesktopIpc(
   handle(ipcChannels.getState, () =>
     DesktopStateSchema.parse(dependencies.state.get()),
   );
-  handle(ipcChannels.refreshJobs, async () => {
+  handle(ipcChannels.refreshOpportunities, async () => {
     if (dependencies.monitor === undefined)
       throw new DesktopError(
         'configuration_invalid',
@@ -101,7 +100,7 @@ export function registerDesktopIpc(
       );
     const request = StartExecutionRequestSchema.parse(value);
     return DesktopStateSchema.parse(
-      await dependencies.controller.start(request.jobId),
+      await dependencies.controller.start(request.opportunityId),
     );
   });
   handle(ipcChannels.cancelExecution, async (_event, value) => {
@@ -174,7 +173,7 @@ export function registerDesktopIpc(
   return () => {
     for (const channel of [
       ipcChannels.getState,
-      ipcChannels.refreshJobs,
+      ipcChannels.refreshOpportunities,
       ipcChannels.startExecution,
       ipcChannels.cancelExecution,
       ipcChannels.resolveApproval,

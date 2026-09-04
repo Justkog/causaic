@@ -8,10 +8,13 @@ import {
   ArtifactIdSchema,
   CampaignSchema,
   CauseSchema,
+  OpportunityIdSchema,
   ExecutorIdSchema,
   MessageIdSchema,
   NodeIdSchema,
   JobDefinitionSchema,
+  LeaseIdSchema,
+  RunIdSchema,
   UserIdSchema,
 } from '@causaic/protocol';
 import type {
@@ -19,7 +22,7 @@ import type {
   ArtifactId,
   Campaign,
   Cause,
-  JobOffer,
+  ContributionOpportunitySummary,
   JobState,
   JsonValue,
   JobDefinition,
@@ -68,7 +71,7 @@ export interface DemoDependencies {
   readonly coordinator: JobCoordinator;
   readonly runtime?: AgentRuntimeAdapter;
   readonly fixture?: DemoFixture;
-  readonly offer?: JobOffer;
+  readonly opportunity?: ContributionOpportunitySummary;
   readonly approval?: InjectedApproval;
   readonly promptForApproval?: (
     request: RuntimeApprovalRequest,
@@ -95,7 +98,7 @@ export type DemoResult =
       readonly artifact: JsonValue;
       readonly output: ArtifactOutput;
     }
-  | { readonly status: 'cancelled'; readonly job: JobState }
+  | { readonly status: 'cancelled'; readonly job?: JobState }
   | {
       readonly status: 'failed';
       readonly job: JobState;
@@ -171,18 +174,21 @@ export async function runDemo(
   const now = dependencies.now ?? Date.now;
   const writeArtifact =
     dependencies.writeArtifact ?? writeArtifactToTemporaryDirectory;
+  const opportunityId = OpportunityIdSchema.parse(
+    `opportunity_job-${fixture.job.id.slice('job_'.length)}`,
+  );
   writeLine(`Cause: ${fixture.cause.name}`);
   writeLine(`Campaign: ${fixture.campaign.name}`);
-  writeLine(`Job: ${fixture.job.id.replace(/^job_/, '')}`);
+  writeLine(`Opportunity: ${opportunityId.replace(/^opportunity_job-/, '')}`);
 
-  const offers =
-    dependencies.offer === undefined
-      ? await dependencies.coordinator.listAvailableJobs({
+  const opportunities =
+    dependencies.opportunity === undefined
+      ? await dependencies.coordinator.listAvailableOpportunities({
           executorType: 'plugin_host',
         })
-      : [dependencies.offer];
-  const offer = offers.find(({ job }) => job.id === fixture.job.id);
-  if (offer === undefined)
+      : [dependencies.opportunity];
+  const opportunity = opportunities.find(({ id }) => id === opportunityId);
+  if (opportunity === undefined)
     throw new RunnerError(
       'job_unavailable',
       `Job ${fixture.job.id} is unavailable`,
@@ -240,7 +246,13 @@ export async function runDemo(
     },
   });
   const running = service.start({
-    offer,
+    opportunity,
+    leaseId: LeaseIdSchema.parse(
+      `lease_runner-demo-${(dependencies.nodeId ?? NodeIdSchema.parse('node_runner-demo')).slice('node_'.length)}`,
+    ),
+    runId: RunIdSchema.parse(
+      `run_runner-demo-${(dependencies.nodeId ?? NodeIdSchema.parse('node_runner-demo')).slice('node_'.length)}`,
+    ),
     installation,
     executorId: ExecutorIdSchema.parse('executor_runner-demo'),
     nodeId: dependencies.nodeId ?? NodeIdSchema.parse('node_runner-demo'),
@@ -303,7 +315,12 @@ export async function runDemo(
     };
   }
   if (result.status === 'cancelled')
-    return { status: 'cancelled', job: result.job };
+    return {
+      status: 'cancelled',
+      job:
+        result.job ??
+        (await dependencies.coordinator.getJobState({ jobId: fixture.job.id })),
+    };
   const job =
     result.job ??
     (await dependencies.coordinator.getJobState({ jobId: fixture.job.id }));

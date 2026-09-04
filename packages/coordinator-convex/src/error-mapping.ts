@@ -35,6 +35,8 @@ const backendCodeMap = {
   INVALID_LEASE_DURATION: 'invalid_request',
   INVALID_LIMIT: 'invalid_request',
   INVALID_RUN_TRANSITION: 'invalid_run_state',
+  OPPORTUNITY_NOT_FOUND: 'job_not_found',
+  OPPORTUNITY_UNAVAILABLE: 'job_unavailable',
   JOB_ALREADY_LEASED: 'lease_conflict',
   JOB_NOT_FOUND: 'job_not_found',
   JOB_UNAVAILABLE: 'job_unavailable',

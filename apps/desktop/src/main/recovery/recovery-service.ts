@@ -5,7 +5,7 @@ import type {
   JobCoordinator,
   JobRecoverySnapshot,
 } from '@causaic/coordinator-core';
-import type { ExecutorId, NodeId } from '@causaic/protocol';
+import type { ExecutorId, NodeId, UserId } from '@causaic/protocol';
 import {
   ApprovalIdSchema,
   ArtifactIdSchema,
@@ -32,6 +32,8 @@ export interface DesktopRecoveryServiceOptions {
   readonly state: DesktopStateStore;
   readonly nodeId: NodeId;
   readonly executorId: ExecutorId;
+  readonly contributorId: UserId;
+  readonly leaseDurationMs: number;
   readonly artifactRoot: string;
   readonly now?: () => number;
 }
@@ -54,9 +56,15 @@ export class DesktopRecoveryService {
         nodeId: this.#options.nodeId,
         limit: 10,
       });
-    const localJobs = new Set(local.map(({ jobId }) => jobId));
+    const localJobs = new Set(
+      local.flatMap(({ jobId }) => (jobId === null ? [] : [jobId])),
+    );
+    // Avoid adopting a remote claim while a local opportunity claim still has
+    // no concrete job binding; recovery will replay that claim first.
+    const hasUnboundOpportunity = local.some(({ jobId }) => jobId === null);
     for (const remote of remoteOwned) {
       if (localJobs.has(remote.job.id)) continue;
+      if (hasUnboundOpportunity) continue;
       const lease = remote.leases.find(({ status }) => status === 'active');
       if (lease === undefined) continue;
       const recovered = this.#options.repositories.createExecution({
@@ -75,6 +83,18 @@ export class DesktopRecoveryService {
     const issues: string[] = [];
     let recoveredExecutions = 0;
     for (const execution of local) {
+      if (execution.jobId === null) {
+        try {
+          const outcome = await this.recoverUnboundClaim(execution);
+          if (outcome !== undefined) issues.push(outcome);
+          else recoveredExecutions += 1;
+        } catch {
+          issues.push(
+            `Recovery for ${execution.opportunityId ?? 'the pending opportunity'} is waiting for the coordinator.`,
+          );
+        }
+        continue;
+      }
       try {
         const outcome = await this.reconcileExecution(execution);
         if (outcome !== undefined) issues.push(outcome);
@@ -98,6 +118,14 @@ export class DesktopRecoveryService {
   public async endInterruptedExecution(): Promise<void> {
     const execution = this.#options.repositories.incompleteExecutions()[0];
     if (execution === undefined) return;
+    if (execution.jobId === null) {
+      this.#options.repositories.markTerminal(execution.id, 'interrupted', {
+        code: 'desktop_process_interrupted_before_claim',
+        message: 'The opportunity was interrupted before its job was recorded.',
+        retryable: true,
+      });
+      return;
+    }
     const remote = await this.#options.coordinator.getRecoverySnapshot({
       jobId: execution.jobId,
     });
@@ -138,6 +166,12 @@ export class DesktopRecoveryService {
   public async reconcileExecution(
     execution: PersistedExecution,
   ): Promise<string | undefined> {
+    if (execution.jobId === null) {
+      this.#options.repositories.updateExecution(execution.id, {
+        recoveryStatus: 'attention_required',
+      });
+      return `The opportunity ${execution.opportunityId ?? 'without an ID'} has no recorded concrete job.`;
+    }
     this.#options.repositories.updateExecution(execution.id, {
       recoveryStatus: 'reconciling',
     });
@@ -285,7 +319,11 @@ export class DesktopRecoveryService {
         await this.#submitAndComplete(execution, remote, coordinator);
         return undefined;
       case 'confirm_completion':
-        if (execution.leaseId === null || execution.runId === null) {
+        if (
+          execution.jobId === null ||
+          execution.leaseId === null ||
+          execution.runId === null
+        ) {
           return `${execution.jobId} has incomplete local ownership metadata.`;
         }
         await coordinator.completeRun({
@@ -307,11 +345,61 @@ export class DesktopRecoveryService {
     return this.reconcileExecution(execution);
   }
 
+  private async recoverUnboundClaim(
+    execution: PersistedExecution,
+  ): Promise<string | undefined> {
+    const operation = this.#options.repositories
+      .unconfirmedOperations(execution.id)
+      .find(({ payload }) => payload.kind === 'claim_opportunity');
+    if (
+      execution.opportunityId === null ||
+      operation?.payload.kind !== 'claim_opportunity' ||
+      operation.payload.opportunityId !== execution.opportunityId
+    ) {
+      this.#options.repositories.updateExecution(execution.id, {
+        recoveryStatus: 'attention_required',
+      });
+      return `The opportunity ${execution.opportunityId ?? 'without an ID'} was interrupted before its claim could be recovered.`;
+    }
+    const coordinator = new JournaledJobCoordinator(
+      this.#options.coordinator,
+      this.#options.repositories,
+      execution.id,
+    );
+    try {
+      await coordinator.claimOpportunity({
+        opportunityId: operation.payload.opportunityId,
+        leaseId: operation.payload.leaseId,
+        runId: operation.payload.runId,
+        nodeId: this.#options.nodeId,
+        executorId: execution.executorId,
+        contributorId: this.#options.contributorId,
+        executorType: 'desktop_node',
+        durationMs: this.#options.leaseDurationMs,
+      });
+    } catch {
+      this.#options.repositories.updateExecution(execution.id, {
+        recoveryStatus: 'attention_required',
+      });
+      return `The opportunity ${execution.opportunityId} could not be claimed during recovery.`;
+    }
+    const rebound = this.#options.repositories.execution(execution.id);
+    if (rebound?.jobId === null || rebound === undefined) {
+      this.#options.repositories.updateExecution(execution.id, {
+        recoveryStatus: 'attention_required',
+      });
+      return `The opportunity ${execution.opportunityId} was claimed but its concrete job was not recorded.`;
+    }
+    return this.reconcileExecution(rebound);
+  }
+
   async #submitAndComplete(
     execution: PersistedExecution,
     remote: JobRecoverySnapshot,
     coordinator: JobCoordinator,
   ): Promise<void> {
+    if (execution.jobId === null)
+      throw new Error('Recovery artifact metadata has no concrete job');
     const localArtifact = this.#options.repositories.artifactsForExecution(
       execution.id,
     )[0];

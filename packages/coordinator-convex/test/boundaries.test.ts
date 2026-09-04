@@ -1,8 +1,12 @@
 import {
+  ClaimOpportunityRequestSchema,
   CoordinatorBackendErrorCodeSchema,
   JobIdSchema,
   NodeIdSchema,
+  validClaimedContributionFixture,
+  validContributionOpportunitySummaryFixture,
 } from '@causaic/protocol';
+import { getFunctionName } from 'convex/server';
 import { describe, expect, it } from 'vitest';
 
 import type { ConvexCoordinatorClient } from '../src/client.js';
@@ -44,7 +48,7 @@ describe('Convex coordinator boundaries', () => {
     };
 
     await expect(
-      new ConvexJobCoordinator(config, client).listAvailableJobs({}),
+      new ConvexJobCoordinator(config, client).listAvailableOpportunities({}),
     ).rejects.toMatchObject({ code: 'protocol_mismatch' });
   });
 
@@ -58,7 +62,7 @@ describe('Convex coordinator boundaries', () => {
     };
 
     await expect(
-      new ConvexJobCoordinator(config, client).listAvailableJobs({}),
+      new ConvexJobCoordinator(config, client).listAvailableOpportunities({}),
     ).rejects.toMatchObject({
       code: 'coordinator_unavailable',
       cause: networkError,
@@ -150,5 +154,160 @@ describe('Convex coordinator boundaries', () => {
         jobId: JobIdSchema.parse('job_fixture'),
       }),
     ).rejects.toMatchObject({ code: 'protocol_mismatch' });
+  });
+
+  it('uses paginated opportunity discovery and the opportunity claim mutation', async () => {
+    const queries: string[] = [];
+    const mutations: Array<{ name: string; args: Record<string, unknown> }> =
+      [];
+    let page = 0;
+    const request = ClaimOpportunityRequestSchema.parse({
+      opportunityId: validContributionOpportunitySummaryFixture.id,
+      leaseId: 'lease_adapter-test',
+      runId: 'run_adapter-test',
+      nodeId: config.nodeExternalId,
+      executorId: 'executor_adapter-test',
+      contributorId: 'user_adapter-test',
+      executorType: 'desktop_node',
+      durationMs: 60_000,
+    });
+    const claimedContribution = {
+      ...validClaimedContributionFixture,
+      opportunityId: request.opportunityId,
+      lease: {
+        ...validClaimedContributionFixture.lease,
+        id: request.leaseId,
+        runId: request.runId,
+        executorId: request.executorId,
+        contributorId: request.contributorId,
+        executorType: request.executorType,
+      },
+    };
+    const client: ConvexCoordinatorClient = {
+      query: async (reference) => {
+        queries.push(getFunctionName(reference));
+        page += 1;
+        return page === 1
+          ? {
+              page: [validContributionOpportunitySummaryFixture],
+              isDone: false,
+              continueCursor: 'cursor-next',
+            }
+          : { page: [], isDone: true, continueCursor: 'cursor-done' };
+      },
+      mutation: async (reference, args) => {
+        mutations.push({ name: getFunctionName(reference), args });
+        return claimedContribution;
+      },
+    };
+    const coordinator = new ConvexJobCoordinator(config, client);
+
+    await expect(
+      coordinator.listAvailableOpportunities({ executorType: 'desktop_node' }),
+    ).resolves.toEqual([validContributionOpportunitySummaryFixture]);
+    await expect(
+      coordinator.claimOpportunity(request),
+    ).resolves.toEqual(claimedContribution);
+    expect(queries).toEqual([
+      'contributorOpportunities:listAvailable',
+      'contributorOpportunities:listAvailable',
+    ]);
+    expect(mutations).toMatchObject([
+      {
+        name: 'contributorOpportunities:claim',
+        args: {
+          opportunityExternalId: validContributionOpportunitySummaryFixture.id,
+          leaseExternalId: 'lease_adapter-test',
+          runExternalId: 'run_adapter-test',
+          nodeExternalId: config.nodeExternalId,
+        },
+      },
+    ]);
+  });
+
+  it('rejects claim responses whose identities do not match the request', async () => {
+    const request = ClaimOpportunityRequestSchema.parse({
+      opportunityId: validContributionOpportunitySummaryFixture.id,
+      leaseId: 'lease_adapter-test',
+      runId: 'run_adapter-test',
+      nodeId: config.nodeExternalId,
+      executorId: 'executor_adapter-test',
+      contributorId: 'user_adapter-test',
+      executorType: 'desktop_node',
+      durationMs: 60_000,
+    });
+    const claimedContribution = {
+      ...validClaimedContributionFixture,
+      opportunityId: request.opportunityId,
+      lease: {
+        ...validClaimedContributionFixture.lease,
+        id: request.leaseId,
+        runId: request.runId,
+        executorId: request.executorId,
+        contributorId: request.contributorId,
+        executorType: request.executorType,
+      },
+    };
+    const responses = [
+      { ...claimedContribution, opportunityId: 'opportunity_job_other' },
+      {
+        ...claimedContribution,
+        lease: { ...claimedContribution.lease, id: 'lease_other' },
+      },
+      {
+        ...claimedContribution,
+        lease: { ...claimedContribution.lease, runId: 'run_other' },
+      },
+      {
+        ...claimedContribution,
+        lease: { ...claimedContribution.lease, executorId: 'executor_other' },
+      },
+      {
+        ...claimedContribution,
+        lease: { ...claimedContribution.lease, contributorId: 'user_other' },
+      },
+      {
+        ...claimedContribution,
+        lease: { ...claimedContribution.lease, executorType: 'plugin_host' },
+      },
+    ];
+
+    for (const response of responses) {
+      const client: ConvexCoordinatorClient = {
+        query: async () => undefined,
+        mutation: async () => response,
+      };
+
+      await expect(
+        new ConvexJobCoordinator(config, client).claimOpportunity(request),
+      ).rejects.toMatchObject({ code: 'protocol_mismatch' });
+    }
+  });
+
+  it('rejects a claim for a node other than the configured node', async () => {
+    let mutationCalled = false;
+    const client: ConvexCoordinatorClient = {
+      query: async () => undefined,
+      mutation: async () => {
+        mutationCalled = true;
+        return validClaimedContributionFixture;
+      },
+    };
+
+    await expect(
+      new ConvexJobCoordinator(config, client).claimOpportunity(
+        ClaimOpportunityRequestSchema.parse({
+          opportunityId: validContributionOpportunitySummaryFixture.id,
+          leaseId: 'lease_adapter-test',
+          runId: 'run_adapter-test',
+          nodeId: 'node_other',
+          executorId: 'executor_adapter-test',
+          contributorId: 'user_adapter-test',
+          executorType: 'desktop_node',
+          durationMs: 60_000,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'lease_node_mismatch' });
+    expect(mutationCalled).toBe(false);
   });
 });

@@ -46,7 +46,8 @@ export const localExecutions = sqliteTable(
   'local_executions',
   {
     id: text('id').primaryKey(),
-    jobId: text('job_id').notNull(),
+    opportunityId: text('opportunity_id'),
+    jobId: text('job_id'),
     leaseId: text('lease_id'),
     runId: text('run_id'),
     nodeId: text('node_id').notNull(),
@@ -98,9 +99,14 @@ export const localExecutions = sqliteTable(
       table.recoveryStatus,
       table.updatedAt,
     ),
+    index('local_executions_opportunity_idx').on(table.opportunityId),
     index('local_executions_job_idx').on(table.jobId),
     uniqueIndex('local_executions_lease_idx').on(table.leaseId),
     uniqueIndex('local_executions_run_idx').on(table.runId),
+    check(
+      'local_executions_identity',
+      sql`${table.opportunityId} IS NOT NULL OR ${table.jobId} IS NOT NULL`,
+    ),
     check(
       'local_executions_lifecycle_status',
       sql`${table.lifecycleStatus} IN ('selected', 'leasing', 'starting_run', 'running', 'awaiting_approval', 'validating', 'artifact_persisted', 'artifact_submitted', 'completion_pending', 'cleanup_pending', 'completed', 'cancelled', 'failed', 'interrupted')`,
@@ -131,7 +137,7 @@ export const localExecutionEvents = sqliteTable(
     ),
     check(
       'local_execution_events_type',
-      sql`${table.type} IN ('job.selected', 'runtime.selected', 'lease.acquired', 'run.started', 'phase.changed', 'progress', 'approval.requested', 'approval.resolved', 'artifact.produced', 'artifact.submitted', 'execution.completed', 'execution.cancelled', 'execution.failed')`,
+      sql`${table.type} IN ('opportunity.claimed', 'runtime.selected', 'lease.acquired', 'run.started', 'phase.changed', 'progress', 'approval.requested', 'approval.resolved', 'artifact.produced', 'artifact.submitted', 'execution.completed', 'execution.cancelled', 'execution.failed')`,
     ),
   ],
 );
@@ -232,6 +238,7 @@ export const pendingOperations = sqliteTable(
       .references(() => localExecutions.id, { onDelete: 'cascade' }),
     kind: text('kind', {
       enum: [
+        'claim_opportunity',
         'acquire_lease',
         'start_run',
         'renew_lease',
@@ -263,7 +270,7 @@ export const pendingOperations = sqliteTable(
     index('pending_operations_execution_idx').on(table.executionId),
     check(
       'pending_operations_kind',
-      sql`${table.kind} IN ('acquire_lease', 'start_run', 'renew_lease', 'request_approval', 'resolve_approval', 'submit_artifact', 'complete_run', 'fail_run', 'release_lease')`,
+      sql`${table.kind} IN ('claim_opportunity', 'acquire_lease', 'start_run', 'renew_lease', 'request_approval', 'resolve_approval', 'submit_artifact', 'complete_run', 'fail_run', 'release_lease')`,
     ),
     check(
       'pending_operations_status',

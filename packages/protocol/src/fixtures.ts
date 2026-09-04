@@ -6,11 +6,12 @@ import {
   CampaignSchema,
   CauseSchema,
   JobLeaseSchema,
-  JobOfferSchema,
   JobProgressEventSchema,
 } from './schemas.js';
 import type {
   ApprovalRequestSchema,
+  ClaimedContributionSchema,
+  ContributionOpportunitySummarySchema,
   JobDefinitionSchema,
   WorkflowReferenceSchema,
 } from './schemas.js';
@@ -171,18 +172,25 @@ export const validCampaignFixture = {
   activatedAt: '2026-07-15T11:30:00Z',
 } satisfies z.input<typeof CampaignSchema>;
 
-export const validJobOfferWorkstreamFixture = {
-  protocolVersion: 1,
-  messageType: 'campaign.workstream',
-  id: 'workstream_public-knowledge-verification',
-  campaignId: validCampaignFixture.id,
-  name: 'Source verification',
-  workflow: validWorkflowReferenceFixture,
-  status: 'active',
-  availabilityPolicy: { type: 'manual' },
-  inventoryPolicy: { type: 'manual_jobs' },
-  participationPolicy: { maxRunsPerContributor: 3 },
-  completionPolicy: { type: 'all_jobs_completed' },
+export const validInputDrivenInventoryPolicyFixture = {
+  type: 'input_driven',
+  source: { type: 'dataset', sourceId: 'dataset_fixture' },
+  mapping: {
+    title: { type: 'source_pointer', sourcePointer: '/title' },
+    summary: { type: 'literal', value: 'Review the supplied item.' },
+    input: {
+      base: {},
+      assignments: [{ sourcePointer: '', targetPointer: '/sourceItem' }],
+    },
+    validationParameters: { base: {}, assignments: [] },
+    requiredAcceptedRuns: 1,
+    priority: 'medium',
+    estimatedDurationMinutes: 10,
+    capacityClass: 'small',
+    supportedExecutorTypes: ['desktop_node', 'plugin_host'],
+    requiresPersistentRunner: false,
+    requiresCheckpointRecovery: false,
+  },
 } as const;
 
 export const validSourceVerificationJobFixture = {
@@ -217,18 +225,6 @@ export const validSourceVerificationJobFixture = {
   createdAt: '2026-07-15T12:00:00Z',
 } satisfies z.input<typeof JobDefinitionSchema>;
 
-export const validJobOfferFixture = {
-  protocolVersion: 1,
-  messageType: 'job.offer',
-  messageId: 'message_offer-1',
-  id: 'offer_source-verification-1',
-  campaign: validCampaignFixture,
-  workstream: validJobOfferWorkstreamFixture,
-  job: validSourceVerificationJobFixture,
-  offeredAt: '2026-07-15T12:01:00Z',
-  expiresAt: '2026-07-15T12:11:00Z',
-} satisfies z.input<typeof JobOfferSchema>;
-
 export const validJobLeaseFixture = {
   protocolVersion: 1,
   messageType: 'job.lease',
@@ -243,6 +239,48 @@ export const validJobLeaseFixture = {
   leasedAt: '2026-07-15T12:02:00Z',
   expiresAt: '2026-07-15T12:32:00Z',
 } satisfies z.input<typeof JobLeaseSchema>;
+
+export const validContributionOpportunitySummaryFixture = {
+  id: 'opportunity_job_source-verification-1',
+  cause: {
+    id: validSourceVerificationJobFixture.causeId,
+    name: validCauseFixture.name,
+  },
+  campaign: {
+    id: validCampaignFixture.id,
+    name: validCampaignFixture.name,
+    objective: validCampaignFixture.name,
+  },
+  workstream: {
+    id: validSourceVerificationJobFixture.workstreamId,
+    name: 'Source verification',
+  },
+  title: validSourceVerificationJobFixture.objective,
+  objective: validSourceVerificationJobFixture.objective,
+  workflow: {
+    reference: validSourceVerificationJobFixture.workflow,
+    requirements: validSourceVerificationJobFixture.workflowRequirements,
+  },
+  requiredAcceptedRuns: validSourceVerificationJobFixture.requiredAcceptedRuns,
+  priority: 'medium',
+  estimatedDurationMinutes:
+    validSourceVerificationJobFixture.estimatedDurationMinutes,
+  capacityClass: validSourceVerificationJobFixture.capacityClass,
+  supportedExecutorTypes:
+    validSourceVerificationJobFixture.supportedExecutorTypes,
+  requiresPersistentRunner:
+    validSourceVerificationJobFixture.requiresPersistentRunner,
+  requiresCheckpointRecovery:
+    validSourceVerificationJobFixture.requiresCheckpointRecovery,
+  createdAt: Date.parse(validSourceVerificationJobFixture.createdAt),
+  updatedAt: Date.parse(validSourceVerificationJobFixture.createdAt),
+} satisfies z.input<typeof ContributionOpportunitySummarySchema>;
+
+export const validClaimedContributionFixture = {
+  opportunityId: validContributionOpportunitySummaryFixture.id,
+  job: validSourceVerificationJobFixture,
+  lease: validJobLeaseFixture,
+} satisfies z.input<typeof ClaimedContributionSchema>;
 
 export const validProgressEventFixture = {
   protocolVersion: 1,
@@ -338,7 +376,6 @@ export const invalidProtocolFixtures: ReadonlyArray<{
   readonly schema:
     | typeof CauseSchema
     | typeof CampaignSchema
-    | typeof JobOfferSchema
     | typeof JobLeaseSchema
     | typeof JobProgressEventSchema
     | typeof ApprovalDecisionSchema
@@ -357,25 +394,6 @@ export const invalidProtocolFixtures: ReadonlyArray<{
     name: 'unsupported protocol version',
     schema: CauseSchema,
     value: { ...validCauseFixture, protocolVersion: 2 },
-  },
-  {
-    name: 'unbranded job identifier',
-    schema: JobOfferSchema,
-    value: {
-      ...validJobOfferFixture,
-      job: { ...validSourceVerificationJobFixture, id: 'convex-record-id' },
-    },
-  },
-  {
-    name: 'job offered from a different campaign',
-    schema: JobOfferSchema,
-    value: {
-      ...validJobOfferFixture,
-      job: {
-        ...validSourceVerificationJobFixture,
-        campaignId: 'campaign_different',
-      },
-    },
   },
   {
     name: 'provider-specific executor type',

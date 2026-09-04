@@ -3,6 +3,7 @@ import type {
   ArtifactId,
   JobId,
   JobState,
+  OpportunityId,
   LeaseId,
   RunId,
   JsonValue,
@@ -17,7 +18,11 @@ interface RunnerEventBase {
 }
 
 export type RunnerEvent =
-  | (RunnerEventBase & { readonly type: 'job.selected'; readonly jobId: JobId })
+  | (RunnerEventBase & {
+      readonly type: 'opportunity.claimed';
+      readonly opportunityId: OpportunityId;
+      readonly jobId: JobId;
+    })
   | (RunnerEventBase & {
       readonly type: 'runtime.selected';
       readonly installation: RuntimeInstallation;
@@ -66,7 +71,7 @@ export type RunnerEvent =
     })
   | (RunnerEventBase & {
       readonly type: 'execution.cancelled';
-      readonly job: JobState;
+      readonly job?: JobState;
       readonly reason: string;
     })
   | (RunnerEventBase & {

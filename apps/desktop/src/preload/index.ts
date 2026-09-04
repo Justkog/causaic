@@ -19,7 +19,8 @@ const stateResult = async (promise: Promise<unknown>) =>
 
 const api: CausaicDesktopApi = {
   getState: () => stateResult(ipcRenderer.invoke(ipcChannels.getState)),
-  refreshJobs: () => stateResult(ipcRenderer.invoke(ipcChannels.refreshJobs)),
+  refreshOpportunities: () =>
+    stateResult(ipcRenderer.invoke(ipcChannels.refreshOpportunities)),
   startExecution: (request) =>
     stateResult(
       ipcRenderer.invoke(

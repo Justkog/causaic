@@ -22,7 +22,7 @@ interface DesktopContextValue {
   readonly focusTarget?: FocusTarget;
   readonly refresh: () => Promise<void>;
   readonly start: (
-    jobId: DesktopState['availableJobs'][number]['job']['id'],
+    opportunityId: DesktopState['availableOpportunities'][number]['id'],
   ) => Promise<void>;
   readonly cancel: () => Promise<void>;
   readonly resolveApproval: (request: ResolveApprovalRequest) => Promise<void>;
@@ -94,9 +94,9 @@ export function DesktopStateProvider({
       loading,
       ...(error === undefined ? {} : { error }),
       ...(focusTarget === undefined ? {} : { focusTarget }),
-      refresh: () => run(() => window.causaicDesktop.refreshJobs()),
-      start: (jobId) =>
-        run(() => window.causaicDesktop.startExecution({ jobId })),
+      refresh: () => run(() => window.causaicDesktop.refreshOpportunities()),
+      start: (opportunityId) =>
+        run(() => window.causaicDesktop.startExecution({ opportunityId })),
       cancel: () =>
         run(() =>
           window.causaicDesktop.cancelExecution({

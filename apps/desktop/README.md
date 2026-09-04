@@ -31,14 +31,14 @@ Vitest; no restore command is required after desktop development.
 
 ## Manual smoke workflow
 
-1. Seed the fixture and open the Jobs view.
-2. Review the source-verification offer and confirm the initial start.
+1. Seed the fixture and open the Opportunities view.
+2. Review the source-verification opportunity and confirm the initial start.
 3. Observe lease, run, phase, and progress updates in Execution.
 4. Hide the window and restore it from the tray.
 5. Approve the network request and observe artifact submission/completion.
 6. Seed again, start another run, and cancel it from the renderer or tray.
 7. Reload the renderer while approval is pending; the approval must rehydrate.
-8. Stop and restart Convex; last-known jobs must be marked stale and then
+8. Stop and restart Convex; last-known opportunities must be marked stale and then
    replaced after reconnection.
 9. Quit during an active run; confirm cancellation and wait for cleanup.
 10. Optionally inspect the same deployment through its operator dashboard and
@@ -119,7 +119,7 @@ remove the database and artifacts together. This does not reset Convex.
 
 - Development credentials are environment variables rather than keychain data.
 - The fake runtime runs inside Electron main and only one execution is allowed.
-- Job discovery polls every five seconds; there is no desktop offline queue.
+- Opportunity discovery polls every five seconds; there is no desktop offline queue.
 - Runtime processes cannot continue across main-process restart; recovery can
   only reconcile and safely finish already-persisted output.
 - There is no database encryption, authentication, real runtime, installer, or

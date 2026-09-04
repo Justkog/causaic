@@ -7,6 +7,7 @@ import type {
   JobId,
   LeaseId,
   NodeId,
+  OpportunityId,
   RunId,
 } from '@causaic/protocol';
 import type { RunnerEvent } from '@causaic/runner-core';
@@ -45,7 +46,8 @@ const TERMINAL_STATUSES = [
 
 export interface CreateExecutionInput {
   readonly id?: LocalExecutionId;
-  readonly jobId: JobId;
+  readonly opportunityId?: OpportunityId;
+  readonly jobId?: JobId;
   readonly nodeId: NodeId;
   readonly executorId: ExecutorId;
   readonly runtimeType: string;
@@ -146,6 +148,8 @@ export class DesktopRepositories {
   }
 
   public createExecution(input: CreateExecutionInput): PersistedExecution {
+    if (input.opportunityId === undefined && input.jobId === undefined)
+      throw new Error('An execution requires an opportunity ID or job ID');
     const id =
       input.id ??
       LocalExecutionIdSchema.parse(`local-execution_${randomUUID()}`);
@@ -153,7 +157,8 @@ export class DesktopRepositories {
       .insert(localExecutions)
       .values({
         id,
-        jobId: input.jobId,
+        opportunityId: input.opportunityId ?? null,
+        jobId: input.jobId ?? null,
         nodeId: input.nodeId,
         executorId: input.executorId,
         runtimeType: input.runtimeType,
@@ -226,6 +231,33 @@ export class DesktopRepositories {
       })
       .where(eq(localExecutions.id, id))
       .run();
+  }
+
+  public confirmClaim(
+    operationId: string,
+    executionId: LocalExecutionId,
+    jobId: JobId,
+    leaseId: LeaseId,
+    runId: RunId,
+  ): void {
+    const now = this.now();
+    this.handle.db.transaction((tx) => {
+      tx.update(localExecutions)
+        .set({
+          jobId,
+          leaseId,
+          runId,
+          lifecycleStatus: 'starting_run',
+          lastConfirmedRemoteStage: 'lease_acquired',
+          updatedAt: now,
+        })
+        .where(eq(localExecutions.id, executionId))
+        .run();
+      tx.update(pendingOperations)
+        .set({ status: 'confirmed', confirmedAt: now, updatedAt: now })
+        .where(eq(pendingOperations.id, operationId))
+        .run();
+    });
   }
 
   public updateExecution(

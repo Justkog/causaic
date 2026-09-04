@@ -12,7 +12,7 @@ describe('trayMenuTemplate', () => {
       quit: vi.fn(),
     };
     const menu = trayMenuTemplate(initialDesktopState(), actions);
-    expect(menu.map(({ label }) => label)).toContain('Pause new jobs');
+    expect(menu.map(({ label }) => label)).toContain('Pause new opportunities');
     expect(
       menu.find(({ label }) => label === 'Cancel active execution')?.enabled,
     ).toBe(false);

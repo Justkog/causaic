@@ -6,6 +6,8 @@ import {
   ArtifactIdSchema,
   CauseIdSchema,
   CauseInvitationIdSchema,
+  GenerationInputIdSchema,
+  OpportunityIdSchema,
   WorkstreamDependencyIdSchema,
   WorkstreamIdSchema,
   WorkflowIdSchema,
@@ -66,5 +68,18 @@ describe('portable identifiers', () => {
     expect(ArtifactIdSchema.safeParse('artifact_export_fixture').success).toBe(
       false,
     );
+  });
+
+  it('validates generation-input and opportunity identifiers', () => {
+    expect(
+      GenerationInputIdSchema.safeParse('generation_input_fixture-1').success,
+    ).toBe(true);
+    expect(
+      OpportunityIdSchema.safeParse('opportunity_input-fixture-1').success,
+    ).toBe(true);
+    expect(
+      GenerationInputIdSchema.safeParse('generation_fixture-1').success,
+    ).toBe(false);
+    expect(OpportunityIdSchema.safeParse('job_fixture-1').success).toBe(false);
   });
 });

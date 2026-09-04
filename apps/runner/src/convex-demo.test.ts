@@ -82,7 +82,7 @@ describe('Convex demo orchestration', () => {
 
   it('preserves coordinator lease conflicts', async () => {
     const coordinator = createDemoCoordinator();
-    coordinator.acquireLease = vi.fn(async () => {
+    coordinator.claimOpportunity = vi.fn(async () => {
       throw new CoordinatorError('lease_conflict', 'leased');
     });
 

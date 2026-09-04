@@ -82,8 +82,14 @@ export type WorkflowSchemaId = z.infer<typeof WorkflowSchemaIdSchema>;
 export const JobIdSchema = opaqueId('job', 'JobId');
 export type JobId = z.infer<typeof JobIdSchema>;
 
-export const OfferIdSchema = opaqueId('offer', 'OfferId');
-export type OfferId = z.infer<typeof OfferIdSchema>;
+export const GenerationInputIdSchema = opaqueId(
+  'generation_input',
+  'GenerationInputId',
+);
+export type GenerationInputId = z.infer<typeof GenerationInputIdSchema>;
+
+export const OpportunityIdSchema = opaqueId('opportunity', 'OpportunityId');
+export type OpportunityId = z.infer<typeof OpportunityIdSchema>;
 
 export const LeaseIdSchema = opaqueId('lease', 'LeaseId');
 export type LeaseId = z.infer<typeof LeaseIdSchema>;

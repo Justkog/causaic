@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import type { JobId } from '@causaic/protocol';
-import type { ExecutorId, NodeId } from '@causaic/protocol';
+import { LeaseIdSchema, RunIdSchema } from '@causaic/protocol';
+import type { ExecutorId, NodeId, OpportunityId } from '@causaic/protocol';
 import type {
   ExecutionResult,
   RunnerEvent,
@@ -33,7 +33,7 @@ export type DesktopNotificationKind =
 
 interface ActiveExecution {
   readonly executionId: LocalExecutionId;
-  readonly jobId: JobId;
+  readonly opportunityId: OpportunityId;
   readonly running: RunningExecution;
   readonly done: Promise<void>;
 }
@@ -58,8 +58,8 @@ export interface ExecutionControllerOptions {
 
 function eventMessage(event: RunnerEvent): string {
   switch (event.type) {
-    case 'job.selected':
-      return 'Job selected';
+    case 'opportunity.claimed':
+      return 'Opportunity claimed';
     case 'runtime.selected':
       return `Using ${event.installation.displayName}`;
     case 'lease.acquired':
@@ -107,7 +107,7 @@ export class DesktopExecutionController {
     this.#options = options;
   }
 
-  public async start(jobId: JobId): Promise<DesktopState> {
+  public async start(opportunityId: OpportunityId): Promise<DesktopState> {
     const desktopState = this.#options.state.get();
     if (
       this.#active !== undefined ||
@@ -120,36 +120,39 @@ export class DesktopExecutionController {
         'execution_active',
         'Another execution is already active.',
       );
-    this.#options.monitor.assertCanStart(jobId);
-    const offer = this.#options.state
+    this.#options.monitor.assertCanStart(opportunityId);
+    const opportunity = this.#options.state
       .get()
-      .availableJobs.find(({ job }) => job.id === jobId);
-    if (offer === undefined)
+      .availableOpportunities.find(({ id }) => id === opportunityId);
+    if (opportunity === undefined)
       throw new DesktopError(
-        'job_stale',
-        'This job is no longer available. Refresh the job list.',
+        'opportunity_stale',
+        'This opportunity is no longer available. Refresh the opportunity list.',
       );
+    const objective = opportunity.objective ?? opportunity.title;
 
     const startedAt = this.#options.now?.() ?? Date.now();
     const executionId = LocalExecutionIdSchema.parse(
       `local-execution_${randomUUID()}`,
     );
+    const leaseId = LeaseIdSchema.parse(`lease_${randomUUID()}`);
+    const runId = RunIdSchema.parse(`run_${randomUUID()}`);
     this.#options.persistence?.repositories.createExecution({
       id: executionId,
-      jobId,
+      opportunityId,
       nodeId: this.#options.persistence.nodeId,
       executorId: this.#options.persistence.executorId,
       runtimeType: this.#options.persistence.runtimeType,
-      objective: offer.job.objective,
-      campaignName: offer.campaign.name,
+      objective,
+      campaignName: opportunity.campaign.name,
       startedAt,
     });
     this.#options.state.update((state) => ({
       ...state,
       currentExecution: {
-        jobId,
-        objective: offer.job.objective,
-        campaignName: offer.campaign.name,
+        opportunityId,
+        objective,
+        campaignName: opportunity.campaign.name,
         status: 'starting',
         startedAt: new Date(startedAt).toISOString(),
         events: [],
@@ -158,8 +161,10 @@ export class DesktopExecutionController {
 
     let running: RunningExecution;
     try {
-      running = await this.#options.host.start(offer, {
+      running = await this.#options.host.start(opportunity, {
         executionId,
+        leaseId,
+        runId,
         afterEvent: async (event) => this.#persistEvent(executionId, event),
       });
     } catch (error) {
@@ -167,7 +172,7 @@ export class DesktopExecutionController {
         ...state,
         currentExecution: null,
         recentExecution: {
-          jobId,
+          opportunityId,
           status: 'failed',
           finishedAt: new Date(
             this.#options.now?.() ?? Date.now(),
@@ -193,8 +198,8 @@ export class DesktopExecutionController {
     }
 
     const eventsDone = this.#consumeEvents(running);
-    const done = this.#settle(executionId, jobId, running, eventsDone);
-    this.#active = { executionId, jobId, running, done };
+    const done = this.#settle(executionId, opportunityId, running, eventsDone);
+    this.#active = { executionId, opportunityId, running, done };
     this.#options.notify?.('execution_started');
     return this.#options.state.get();
   }
@@ -302,6 +307,9 @@ export class DesktopExecutionController {
           currentExecution: {
             ...state.currentExecution,
             status,
+            ...(event.type === 'opportunity.claimed'
+              ? { jobId: event.jobId }
+              : {}),
             ...(event.type === 'progress'
               ? { progressMessage: nextEvent.message }
               : {}),
@@ -314,7 +322,7 @@ export class DesktopExecutionController {
 
   async #settle(
     executionId: LocalExecutionId,
-    jobId: JobId,
+    opportunityId: OpportunityId,
     running: RunningExecution,
     eventsDone: Promise<void>,
   ): Promise<void> {
@@ -324,7 +332,7 @@ export class DesktopExecutionController {
     this.#options.state.update((state) => ({
       ...state,
       currentExecution: null,
-      recentExecution: this.#recentResult(jobId, result),
+      recentExecution: this.#recentResult(executionId, opportunityId, result),
     }));
     {
       if (result.status === 'completed')
@@ -362,13 +370,23 @@ export class DesktopExecutionController {
     await this.#options.monitor.refresh();
   }
 
-  #recentResult(jobId: JobId, result: ExecutionResult) {
+  #recentResult(
+    executionId: LocalExecutionId,
+    opportunityId: OpportunityId,
+    result: ExecutionResult,
+  ) {
+    const jobId =
+      result.job?.id ??
+      this.#options.persistence?.repositories.execution(executionId)?.jobId ??
+      undefined;
+    const identity =
+      jobId === undefined ? { opportunityId } : { opportunityId, jobId };
     const finishedAt = new Date(
       this.#options.now?.() ?? Date.now(),
     ).toISOString();
     if (result.status === 'completed')
       return {
-        jobId,
+        ...identity,
         status: 'completed' as const,
         finishedAt,
         message: 'The contribution completed successfully.',
@@ -379,13 +397,13 @@ export class DesktopExecutionController {
       };
     if (result.status === 'cancelled')
       return {
-        jobId,
+        ...identity,
         status: 'cancelled' as const,
         finishedAt,
         message: this.#options.redact?.(result.reason) ?? result.reason,
       };
     return {
-      jobId,
+      ...identity,
       status: 'failed' as const,
       finishedAt,
       message:

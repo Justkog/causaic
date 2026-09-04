@@ -1,27 +1,28 @@
 import type { JobCoordinator } from '@causaic/coordinator-core';
-import { JobOfferSchema, validJobOfferFixture } from '@causaic/protocol';
+import {
+  ContributionOpportunitySummarySchema,
+  validContributionOpportunitySummaryFixture,
+} from '@causaic/protocol';
 import { describe, expect, it, vi } from 'vitest';
 
 import { BackendMonitor } from './backend-monitor.js';
 import { DesktopStateStore } from './state.js';
 
-const offer = JobOfferSchema.parse({
-  ...validJobOfferFixture,
-  job: {
-    ...validJobOfferFixture.job,
-    supportedExecutorTypes: ['desktop_node', 'plugin_host'],
-  },
-});
+const opportunity = ContributionOpportunitySummarySchema.parse(
+  validContributionOpportunitySummaryFixture,
+);
 
 describe('BackendMonitor', () => {
-  it('keeps last-known jobs and marks them stale after a failure', async () => {
-    const listAvailableJobs = vi
-      .fn<Pick<JobCoordinator, 'listAvailableJobs'>['listAvailableJobs']>()
-      .mockResolvedValueOnce([offer])
+  it('keeps last-known opportunities and marks them stale after a failure', async () => {
+    const listAvailableOpportunities = vi
+      .fn<
+        Pick<JobCoordinator, 'listAvailableOpportunities'>['listAvailableOpportunities']
+      >()
+      .mockResolvedValueOnce([opportunity])
       .mockRejectedValueOnce(new Error('network unavailable'));
     const state = new DesktopStateStore();
     const monitor = new BackendMonitor({
-      coordinator: { listAvailableJobs },
+      coordinator: { listAvailableOpportunities },
       state,
       now: () => Date.parse('2030-01-01T12:00:00Z'),
     });
@@ -30,32 +31,38 @@ describe('BackendMonitor', () => {
     await monitor.refresh();
     expect(state.get()).toMatchObject({
       connection: { status: 'temporarily_unavailable', stale: true },
-      availableJobs: [offer],
+      availableOpportunities: [opportunity],
     });
   });
 
   it('does not notify for the initial baseline or while paused', async () => {
-    const onNewJobs = vi.fn();
+    const onNewOpportunities = vi.fn();
     const coordinator = {
-      listAvailableJobs: vi.fn().mockResolvedValue([offer]),
+      listAvailableOpportunities: vi.fn().mockResolvedValue([opportunity]),
     };
     const state = new DesktopStateStore();
-    const monitor = new BackendMonitor({ coordinator, state, onNewJobs });
+    const monitor = new BackendMonitor({
+      coordinator,
+      state,
+      onNewOpportunities,
+    });
     await monitor.refresh();
-    expect(onNewJobs).not.toHaveBeenCalled();
+    expect(onNewOpportunities).not.toHaveBeenCalled();
     state.update((current) => ({
       ...current,
-      availableJobs: [],
+      availableOpportunities: [],
       paused: true,
     }));
     await monitor.refresh();
-    expect(onNewJobs).not.toHaveBeenCalled();
+    expect(onNewOpportunities).not.toHaveBeenCalled();
   });
 
   it('stays connected when post-connect recovery fails', async () => {
     const state = new DesktopStateStore();
     const monitor = new BackendMonitor({
-      coordinator: { listAvailableJobs: vi.fn().mockResolvedValue([offer]) },
+      coordinator: {
+        listAvailableOpportunities: vi.fn().mockResolvedValue([opportunity]),
+      },
       state,
       onConnected: vi.fn().mockRejectedValue(new Error('recovery failed')),
     });
@@ -64,7 +71,7 @@ describe('BackendMonitor', () => {
 
     expect(state.get()).toMatchObject({
       connection: { status: 'connected', stale: false },
-      availableJobs: [offer],
+      availableOpportunities: [opportunity],
     });
   });
 });

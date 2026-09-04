@@ -5,6 +5,8 @@ import {
 import type {
   ArtifactId,
   ExecutableWorkflowDefinition,
+  JobDefinition,
+  JobId,
   JobLease,
   JobState,
   RunId,
@@ -41,6 +43,8 @@ type RunnerEventInput = RunnerEvent extends infer Event
 
 interface MutableExecutionState {
   stage: RunnerLifecycleStage;
+  claimAttempted: boolean;
+  job?: JobDefinition;
   lease?: JobLease;
   runStarted: boolean;
   approvalDenied: boolean;
@@ -96,7 +100,7 @@ function assertRuntimeCompatibility(
   definition: ExecutableWorkflowDefinition,
   runtime: AgentRuntimeAdapter,
   installation: RuntimeInstallation,
-  expected: StartExecutionRequest['offer']['job']['workflow'],
+  expected: StartExecutionRequest['opportunity']['workflow']['reference'],
 ): void {
   if (
     definition.workflowVersionId !== expected.id ||
@@ -177,6 +181,7 @@ export class LocalRunnerService implements RunnerService {
     );
     const state: MutableExecutionState = {
       stage: 'selection',
+      claimAttempted: false,
       runStarted: false,
       approvalDenied: false,
       artifactSubmissionConfirmed: false,
@@ -187,19 +192,38 @@ export class LocalRunnerService implements RunnerService {
       terminalEmitted = true;
       await emitter.emit(event);
     };
-    const jobId = request.offer.job.id;
+    let jobId: JobId | undefined;
 
     try {
-      await emitter.emit({ type: 'job.selected', jobId });
+      this.#throwIfCancelled(controller.signal, state.stage);
+      state.claimAttempted = true;
+      const claimed = await coordinator.claimOpportunity({
+        opportunityId: request.opportunity.id,
+        leaseId: request.leaseId,
+        runId: request.runId,
+        nodeId: request.nodeId,
+        executorId: request.executorId,
+        contributorId: request.contributorId,
+        executorType: request.executorType,
+        durationMs: request.leaseDurationMs,
+      });
+      state.job = claimed.job;
+      state.lease = claimed.lease;
+      jobId = claimed.job.id;
+      await emitter.emit({
+        type: 'opportunity.claimed',
+        opportunityId: request.opportunity.id,
+        jobId,
+      });
       state.workflowDefinition = await coordinator.getWorkflowDefinition({
         jobId,
-        workflowVersionId: request.offer.job.workflow.id,
+        workflowVersionId: claimed.job.workflow.id,
       });
       assertRuntimeCompatibility(
         state.workflowDefinition,
         runtime,
         request.installation,
-        request.offer.job.workflow,
+        claimed.job.workflow,
       );
       if (!request.installation.available)
         throw new RunnerExecutionError(
@@ -214,15 +238,6 @@ export class LocalRunnerService implements RunnerService {
       });
       this.#throwIfCancelled(controller.signal, state.stage);
 
-      state.stage = 'leasing';
-      state.lease = await coordinator.acquireLease({
-        jobId,
-        nodeId: request.nodeId,
-        executorId: request.executorId,
-        contributorId: request.contributorId,
-        executorType: request.executorType,
-        durationMs: request.leaseDurationMs,
-      });
       await emitter.emit({
         type: 'lease.acquired',
         leaseId: state.lease.id,
@@ -232,7 +247,7 @@ export class LocalRunnerService implements RunnerService {
 
       state.stage = 'starting_run';
       await coordinator.startRun({
-        jobId,
+        jobId: claimed.job.id,
         leaseId: state.lease.id,
         runId: state.lease.runId,
       });
@@ -246,7 +261,7 @@ export class LocalRunnerService implements RunnerService {
       const session = await runtime.prepareSession({
         sessionId: this.dependencies.ids.sessionId(),
         installationId: request.installation.id,
-        job: request.offer.job,
+        job: claimed.job,
         workflowDefinition: state.workflowDefinition,
         runId: state.lease.runId,
         approvalId,
@@ -304,7 +319,7 @@ export class LocalRunnerService implements RunnerService {
                 }
               : {
                   type: 'execution.cancelled',
-                  job: outcome.job,
+                  ...(outcome.job === undefined ? {} : { job: outcome.job }),
                   reason: outcome.reason,
                 },
           );
@@ -330,7 +345,6 @@ export class LocalRunnerService implements RunnerService {
         retryable: cancelled || state.stage !== 'artifact_validation',
       });
       const recovered = await this.#recover(
-        request,
         state,
         primary,
         cancelled,
@@ -345,7 +359,7 @@ export class LocalRunnerService implements RunnerService {
       } else if (recovered.status === 'cancelled') {
         await terminal({
           type: 'execution.cancelled',
-          job: recovered.job,
+          ...(recovered.job === undefined ? {} : { job: recovered.job }),
           reason: recovered.reason,
         });
       } else {
@@ -372,6 +386,14 @@ export class LocalRunnerService implements RunnerService {
   }): Promise<CompletedExecutionResult | CancelledExecutionResult | undefined> {
     const { coordinator, runtime } = this.dependencies;
     const { event, emitter, leaseId, runId, state } = input;
+    const jobId = state.job?.id;
+    if (jobId === undefined)
+      throw new RunnerExecutionError(
+        'job_unavailable',
+        'selection',
+        false,
+        'The claimed contribution job is missing',
+      );
     const report = async (
       progress:
         | {
@@ -389,7 +411,7 @@ export class LocalRunnerService implements RunnerService {
             'progress',
             event.sequence,
           ),
-          jobId: input.request.offer.job.id,
+          jobId,
           runId,
           sequence: event.sequence,
           occurredAt: new Date(this.dependencies.now()).toISOString(),
@@ -522,7 +544,7 @@ export class LocalRunnerService implements RunnerService {
           );
         state.stage = 'artifact_submission';
         const submitted = await coordinator.submitArtifact({
-          jobId: input.request.offer.job.id,
+          jobId,
           leaseId,
           runId,
           artifactId: event.artifactId,
@@ -537,7 +559,7 @@ export class LocalRunnerService implements RunnerService {
         this.#throwIfCancelled(input.signal, 'artifact_submission');
         state.stage = 'completion';
         await coordinator.completeRun({
-          jobId: input.request.offer.job.id,
+          jobId,
           leaseId,
           runId,
           artifactId: submitted.id,
@@ -545,7 +567,7 @@ export class LocalRunnerService implements RunnerService {
         return {
           status: 'completed',
           job: await coordinator.getJobState({
-            jobId: input.request.offer.job.id,
+            jobId,
           }),
           artifact: state.artifact.content,
           artifactId: submitted.id,
@@ -557,7 +579,7 @@ export class LocalRunnerService implements RunnerService {
         return {
           status: 'cancelled',
           job: await coordinator.getJobState({
-            jobId: input.request.offer.job.id,
+            jobId,
           }),
           reason: event.reason,
         };
@@ -567,7 +589,7 @@ export class LocalRunnerService implements RunnerService {
           return {
             status: 'cancelled',
             job: await coordinator.getJobState({
-              jobId: input.request.offer.job.id,
+              jobId,
             }),
             reason: event.failure.message,
           };
@@ -582,7 +604,6 @@ export class LocalRunnerService implements RunnerService {
   }
 
   async #recover(
-    request: StartExecutionRequest,
     state: MutableExecutionState,
     primary: RunnerExecutionError,
     cancelled: boolean,
@@ -592,41 +613,46 @@ export class LocalRunnerService implements RunnerService {
     let job: JobState | undefined;
     let cleanupError: unknown;
     try {
-      job = await coordinator.getJobState({ jobId: request.offer.job.id });
-      if (state.lease !== undefined) {
-        if (
-          (job.status === 'completed' ||
-            (job.status === 'validating' &&
-              job.run?.status === 'completed' &&
-              job.lease?.status === 'released')) &&
-          state.artifact !== undefined &&
-          state.artifactId !== undefined &&
-          state.output !== undefined
-        )
-          return {
-            status: 'completed',
-            job,
-            artifact: state.artifact.content,
-            artifactId: state.artifactId,
-            output: state.output,
-          };
+      const claimedJobId = state.job?.id;
+      if (claimedJobId !== undefined) {
+        job = await coordinator.getJobState({ jobId: claimedJobId });
+        if (state.lease !== undefined) {
+          if (
+            (job.status === 'completed' ||
+              (job.status === 'validating' &&
+                job.run?.status === 'completed' &&
+                job.lease?.status === 'released')) &&
+            state.artifact !== undefined &&
+            state.artifactId !== undefined &&
+            state.output !== undefined
+          )
+            return {
+              status: 'completed',
+              job,
+              artifact: state.artifact.content,
+              artifactId: state.artifactId,
+              output: state.output,
+            };
 
-        if (job.lease?.status === 'active') {
-          if (cancelled || !state.runStarted)
-            await coordinator.releaseLease({ leaseId: state.lease.id });
-          else
-            await coordinator.failRun({
-              leaseId: state.lease.id,
-              runId: state.lease.runId,
-              failure: failureFor(primary),
-            });
-          job = await coordinator.getJobState({ jobId: request.offer.job.id });
+          if (job.lease?.status === 'active') {
+            if (cancelled || !state.runStarted)
+              await coordinator.releaseLease({ leaseId: state.lease.id });
+            else
+              await coordinator.failRun({
+                leaseId: state.lease.id,
+                runId: state.lease.runId,
+                failure: failureFor(primary),
+              });
+            job = await coordinator.getJobState({ jobId: claimedJobId });
+          }
         }
       }
     } catch (error) {
       cleanupError = error;
     }
 
+    if (cancelled && !state.claimAttempted)
+      return { status: 'cancelled', reason: cancellationReason };
     if (cancelled && job !== undefined)
       return { status: 'cancelled', job, reason: cancellationReason };
     return {

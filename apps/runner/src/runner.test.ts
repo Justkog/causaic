@@ -167,7 +167,7 @@ describe('demo orchestration', () => {
       expect.arrayContaining([
         'Cause: Open Public Evidence',
         'Campaign: Transport policy report verification',
-        'Job: transport-policy-report',
+        'Opportunity: transport-policy-report',
         'Runtime: Causaic Fake Runtime',
         '[preparing] Preparing workspace',
         '[approval] Allow access to example.gov? approved',

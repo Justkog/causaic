@@ -17,6 +17,16 @@ import {
   WorkflowSchemaDescriptorSchema,
 } from './workflow-data.js';
 
+export const CapacityClassSchema = z.enum(['small', 'medium', 'large']);
+export type CapacityClass = z.infer<typeof CapacityClassSchema>;
+
+export const ExecutorTypeSchema = z.enum([
+  'desktop_node',
+  'plugin_host',
+  'scheduled_plugin_host',
+]);
+export type ExecutorType = z.infer<typeof ExecutorTypeSchema>;
+
 export const MAX_REQUIRED_ACCEPTED_RUNS = 100;
 export const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 export const JobPrioritySchema = z.enum(JOB_PRIORITIES);

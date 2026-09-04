@@ -1,6 +1,8 @@
 import {
   ExecutorIdSchema,
+  LeaseIdSchema,
   NodeIdSchema,
+  RunIdSchema,
   UserIdSchema,
 } from '@causaic/protocol';
 import type { JobCoordinator } from '@causaic/coordinator-core';
@@ -13,7 +15,7 @@ import { WorkflowArtifactValidator } from './artifacts.js';
 import { LocalRunnerService } from './service.js';
 import type { LocalArtifactStore } from './types.js';
 import {
-  createRunnerCoreTestOffer,
+  createRunnerCoreTestOpportunity,
   requireAvailableInstallation,
   runnerCoreTestIds,
   runnerCoreTestFixtures,
@@ -38,7 +40,7 @@ async function setup(options?: {
   const coordinator = createRunnerCoreTestCoordinator();
   options?.configureCoordinator?.(coordinator);
   const runtime = options?.runtime ?? new FakeRuntimeAdapter();
-  const offer = await createRunnerCoreTestOffer(coordinator);
+  const opportunity = createRunnerCoreTestOpportunity();
   const installation = await requireAvailableInstallation(
     await runtime.detect(),
   );
@@ -64,7 +66,9 @@ async function setup(options?: {
     coordinator,
     store,
     running: service.start({
-      offer,
+      opportunity,
+      leaseId: LeaseIdSchema.parse('lease_runner-core-test'),
+      runId: RunIdSchema.parse('run_runner-core-test'),
       installation,
       executorId: ExecutorIdSchema.parse('executor_runner-core-test'),
       nodeId: NodeIdSchema.parse('node_runner-core-test'),
@@ -84,7 +88,7 @@ async function eventTypes(events: AsyncIterable<{ readonly type: string }>) {
 }
 
 describe('LocalRunnerService', () => {
-  it('completes one selected offer and emits one ordered terminal event', async () => {
+  it('completes one selected opportunity and emits one ordered terminal event', async () => {
     const { running, store } = await setup();
     const typesPromise = eventTypes(running.events);
     await expect(running.result).resolves.toMatchObject({
@@ -93,7 +97,7 @@ describe('LocalRunnerService', () => {
     });
     const types = await typesPromise;
     expect(types).toEqual([
-      'job.selected',
+      'opportunity.claimed',
       'runtime.selected',
       'lease.acquired',
       'run.started',
@@ -137,14 +141,38 @@ describe('LocalRunnerService', () => {
   it('cancels before lease acquisition without mutating the job', async () => {
     const controller = new AbortController();
     controller.abort('Cancelled before lease');
-    const { running } = await setup({ signal: controller.signal });
+    const { running } = await setup({
+      signal: controller.signal,
+      configureCoordinator: (coordinator) => {
+        coordinator.getJobState = async () => {
+          throw new Error('An unclaimed opportunity has no job state');
+        };
+      },
+    });
     const typesPromise = eventTypes(running.events);
     await expect(running.result).resolves.toMatchObject({
       status: 'cancelled',
       reason: 'Cancelled before lease',
-      job: { status: 'available', attemptCount: 0 },
     });
+    const result = await running.result;
+    expect(result.job).toBeUndefined();
     expect(await typesPromise).not.toContain('lease.acquired');
+  });
+
+  it('releases a lease when selection fails after claiming', async () => {
+    const { running } = await setup({
+      configureCoordinator: (coordinator) => {
+        coordinator.getWorkflowDefinition = async () => {
+          throw new Error('Workflow definition unavailable');
+        };
+      },
+    });
+    void eventTypes(running.events);
+    await expect(running.result).resolves.toMatchObject({
+      status: 'failed',
+      error: { message: 'Workflow definition unavailable' },
+      job: { status: 'available' },
+    });
   });
 
   it.each([
@@ -182,7 +210,7 @@ describe('LocalRunnerService', () => {
     });
     const coordinator = createRunnerCoreTestCoordinator();
     const runtime = new FakeRuntimeAdapter();
-    const offer = await createRunnerCoreTestOffer(coordinator);
+    const opportunity = createRunnerCoreTestOpportunity();
     const installation = await requireAvailableInstallation(
       await runtime.detect(),
     );
@@ -219,7 +247,9 @@ describe('LocalRunnerService', () => {
       now: () => Date.parse('2030-01-01T10:01:00Z'),
     });
     const running = service.start({
-      offer,
+      opportunity,
+      leaseId: LeaseIdSchema.parse('lease_runner-core-test'),
+      runId: RunIdSchema.parse('run_runner-core-test'),
       installation,
       executorId: ExecutorIdSchema.parse('executor_runner-core-test'),
       nodeId: NodeIdSchema.parse('node_runner-core-test'),

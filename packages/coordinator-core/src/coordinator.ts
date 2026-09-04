@@ -5,11 +5,14 @@ import type {
   ArtifactId,
   ArtifactManifest,
   Campaign,
+  ClaimOpportunityRequest,
+  ClaimedContribution,
+  ContributionOpportunitySummary,
   ExecutorId,
   ExecutorType,
   JobId,
   JobLease,
-  JobOffer,
+  JobDefinition,
   JobProgressEvent,
   JobState,
   JsonValue,
@@ -22,17 +25,10 @@ import type {
   WorkflowVersionId,
 } from '@causaic/protocol';
 
-export interface ListAvailableJobsRequest {
-  readonly executorType?: ExecutorType;
-}
+export type { ClaimOpportunityRequest } from '@causaic/protocol';
 
-export interface AcquireLeaseRequest {
-  readonly jobId: JobId;
-  readonly nodeId: NodeId;
-  readonly executorId: ExecutorId;
-  readonly contributorId: UserId;
-  readonly executorType: ExecutorType;
-  readonly durationMs: number;
+export interface ListAvailableOpportunitiesRequest {
+  readonly executorType?: ExecutorType;
 }
 
 export interface StartRunRequest {
@@ -187,15 +183,17 @@ export interface GetJobStateRequest {
 
 export interface CoordinatorFixtures {
   readonly campaigns: readonly Campaign[];
-  readonly jobs: readonly JobOffer['job'][];
+  readonly jobs: readonly JobDefinition[];
   readonly workflowDefinitions?: readonly ExecutableWorkflowDefinition[];
 }
 
 export interface JobCoordinator {
-  listAvailableJobs(
-    request: ListAvailableJobsRequest,
-  ): Promise<readonly JobOffer[]>;
-  acquireLease(request: AcquireLeaseRequest): Promise<JobLease>;
+  listAvailableOpportunities(
+    request: ListAvailableOpportunitiesRequest,
+  ): Promise<readonly ContributionOpportunitySummary[]>;
+  claimOpportunity(
+    request: ClaimOpportunityRequest,
+  ): Promise<ClaimedContribution>;
   startRun(request: StartRunRequest): Promise<JobRun>;
   reportProgress(request: ReportProgressRequest): Promise<void>;
   requestApproval(request: CreateApprovalRequest): Promise<ApprovalRequest>;

@@ -4,11 +4,11 @@ import { DesktopError } from '../shared/errors.js';
 import type { DesktopStateStore } from './state.js';
 
 export interface BackendMonitorOptions {
-  readonly coordinator: Pick<JobCoordinator, 'listAvailableJobs'>;
+  readonly coordinator: Pick<JobCoordinator, 'listAvailableOpportunities'>;
   readonly state: DesktopStateStore;
   readonly pollIntervalMs?: number;
   readonly now?: () => number;
-  readonly onNewJobs?: (count: number) => void;
+  readonly onNewOpportunities?: (count: number) => void;
   readonly onConnected?: () => void | Promise<void>;
 }
 
@@ -45,7 +45,7 @@ export class BackendMonitor {
     return this.#refreshing;
   }
 
-  public assertCanStart(jobId: string): void {
+  public assertCanStart(opportunityId: string): void {
     const state = this.#options.state.get();
     if (state.paused)
       throw new DesktopError(
@@ -57,18 +57,20 @@ export class BackendMonitor {
         'backend_unavailable',
         'The local coordinator is not currently available.',
       );
-    if (!state.availableJobs.some(({ job }) => job.id === jobId))
+    if (!state.availableOpportunities.some(({ id }) => id === opportunityId))
       throw new DesktopError(
-        'job_stale',
-        'This job is no longer available. Refresh the job list.',
+        'opportunity_stale',
+        'This opportunity is no longer available. Refresh the opportunity list.',
       );
   }
 
   async #performRefresh(): Promise<void> {
     const before = this.#options.state.get();
-    let offers: Awaited<ReturnType<JobCoordinator['listAvailableJobs']>>;
+    let opportunities: Awaited<
+      ReturnType<JobCoordinator['listAvailableOpportunities']>
+    >;
     try {
-      offers = await this.#options.coordinator.listAvailableJobs({
+      opportunities = await this.#options.coordinator.listAvailableOpportunities({
         executorType: 'desktop_node',
       });
     } catch {
@@ -76,25 +78,23 @@ export class BackendMonitor {
         ...state,
         connection: {
           status: 'temporarily_unavailable',
-          stale: state.availableJobs.length > 0,
+          stale: state.availableOpportunities.length > 0,
           message: 'The local coordinator is temporarily unavailable.',
         },
       }));
       return;
     }
 
-    const previousIds = new Set(before.availableJobs.map(({ job }) => job.id));
-    const newCount = offers.filter(
-      ({ job }) => !previousIds.has(job.id),
-    ).length;
+    const previousIds = new Set(before.availableOpportunities.map(({ id }) => id));
+    const newCount = opportunities.filter(({ id }) => !previousIds.has(id)).length;
     this.#options.state.update((state) => ({
       ...state,
       connection: { status: 'connected', stale: false },
-      availableJobs: [...offers],
+      availableOpportunities: [...opportunities],
       refreshedAt: new Date(this.#options.now?.() ?? Date.now()).toISOString(),
     }));
     if (this.#hasBaseline && !before.paused && newCount > 0)
-      this.#options.onNewJobs?.(newCount);
+      this.#options.onNewOpportunities?.(newCount);
     this.#hasBaseline = true;
 
     try {

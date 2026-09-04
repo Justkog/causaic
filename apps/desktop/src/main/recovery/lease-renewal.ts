@@ -42,6 +42,10 @@ export class LeaseRenewalService {
     const generation = ++this.#generation;
     const execution = this.#options.repositories.execution(executionId);
     if (execution === undefined) return;
+    if (execution.jobId === null) {
+      await onOwnershipLost();
+      return;
+    }
     const snapshot = await this.#options.coordinator.getRecoverySnapshot({
       jobId: execution.jobId,
     });
@@ -125,6 +129,10 @@ export class LeaseRenewalService {
     } catch {
       const execution = this.#options.repositories.execution(executionId);
       if (execution === undefined) return;
+      if (execution.jobId === null) {
+        await onOwnershipLost();
+        return;
+      }
       try {
         const snapshot = await this.#options.coordinator.getRecoverySnapshot({
           jobId: execution.jobId,

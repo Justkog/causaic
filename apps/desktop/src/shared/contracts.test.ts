@@ -1,4 +1,4 @@
-import { validJobOfferFixture } from '@causaic/protocol';
+import { validContributionOpportunitySummaryFixture } from '@causaic/protocol';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -8,12 +8,12 @@ import {
 } from './contracts.js';
 
 describe('desktop IPC contracts', () => {
-  it('accepts portable job offers and rejects unknown or sensitive fields', () => {
+  it('accepts source-neutral opportunities and rejects unknown fields', () => {
     expect(
       DesktopStateSchema.parse({
         ...initialDesktopState(),
-        availableJobs: [validJobOfferFixture],
-      }).availableJobs,
+        availableOpportunities: [validContributionOpportunitySummaryFixture],
+      }).availableOpportunities,
     ).toHaveLength(1);
     expect(() =>
       DesktopStateSchema.parse({ ...initialDesktopState(), secret: 'nope' }),

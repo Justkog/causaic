@@ -14,6 +14,7 @@ import {
 } from './workflow-catalog.js';
 import { CapabilityHintSchema } from './agent-task.js';
 import { WorkflowSchemaDescriptorSchema } from './workflow-data.js';
+import { InputDrivenInventoryPolicySchema } from './generation-inputs.js';
 
 export const MAX_WORKSTREAMS_PER_CAMPAIGN = 100;
 export const MAX_DEPENDENCIES_PER_WORKSTREAM = 20;
@@ -45,6 +46,7 @@ export const WorkstreamInventoryPolicySchema = z.discriminatedUnion('type', [
       targetJobCount: z.number().int().min(1).max(10_000),
     })
     .strict(),
+  InputDrivenInventoryPolicySchema,
 ]);
 export type WorkstreamInventoryPolicy = z.infer<
   typeof WorkstreamInventoryPolicySchema
@@ -81,6 +83,7 @@ export type WorkstreamParticipationPolicy = z.infer<
 export const WorkstreamCompletionPolicySchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('manual') }).strict(),
   z.object({ type: z.literal('all_jobs_completed') }).strict(),
+  z.object({ type: z.literal('all_opportunities_completed') }).strict(),
 ]);
 export type WorkstreamCompletionPolicy = z.infer<
   typeof WorkstreamCompletionPolicySchema
@@ -115,7 +118,29 @@ export const WorkstreamProfileInputSchema = z
     participationPolicy: WorkstreamParticipationPolicySchema,
     completionPolicy: WorkstreamCompletionPolicySchema,
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    const inputDriven = value.inventoryPolicy.type === 'input_driven';
+    const opportunityCompletion =
+      value.completionPolicy.type === 'all_opportunities_completed';
+    const jobCompletion = value.completionPolicy.type === 'all_jobs_completed';
+
+    if (inputDriven && jobCompletion) {
+      context.addIssue({
+        code: 'custom',
+        path: ['completionPolicy'],
+        message:
+          'Input-driven inventory requires manual or opportunity completion.',
+      });
+    }
+    if (!inputDriven && opportunityCompletion) {
+      context.addIssue({
+        code: 'custom',
+        path: ['completionPolicy'],
+        message: 'Opportunity completion requires input-driven inventory.',
+      });
+    }
+  });
 export type WorkstreamProfileInput = z.input<
   typeof WorkstreamProfileInputSchema
 >;

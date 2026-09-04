@@ -2,7 +2,7 @@ export const ipcChannels = {
   getState: 'desktop:state:get',
   stateChanged: 'desktop:state:changed',
   focusTarget: 'desktop:focus-target',
-  refreshJobs: 'desktop:jobs:refresh',
+  refreshOpportunities: 'desktop:opportunities:refresh',
   startExecution: 'desktop:execution:start',
   cancelExecution: 'desktop:execution:cancel',
   resolveApproval: 'desktop:approval:resolve',

@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
 import type { JobCoordinator, JobRun } from '@causaic/coordinator-core';
-import { CoordinatorProtocolMismatchError } from '@causaic/coordinator-core';
+import {
+  CoordinatorError,
+  CoordinatorProtocolMismatchError,
+} from '@causaic/coordinator-core';
 import {
   ApprovalDecisionSchema,
   ApprovalIdSchema,
@@ -9,12 +12,13 @@ import {
   ArtifactIdSchema,
   ArtifactManifestSchema,
   CampaignIdSchema,
+  ClaimedContributionSchema,
   CauseIdSchema,
+  ContributionOpportunitySummarySchema,
   ExecutorIdSchema,
   ExecutableWorkflowDefinitionSchema,
   JobIdSchema,
   JobLeaseSchema,
-  JobOfferSchema,
   JobProgressEventSchema,
   JobStateSchema,
   LeaseIdSchema,
@@ -25,8 +29,10 @@ import {
 } from '@causaic/protocol';
 import type {
   ExecutorType,
+  ClaimedContribution,
+  ContributionOpportunitySummary,
+  JobDefinition,
   JobLease,
-  JobOffer,
   LeaseId,
 } from '@causaic/protocol';
 import { makeFunctionReference } from 'convex/server';
@@ -38,7 +44,14 @@ import type { ConvexCoordinatorConfig } from './config.js';
 import { ConvexCoordinatorConfigSchema } from './config.js';
 import { mapConvexCoordinatorError } from './error-mapping.js';
 
-const jobOffersSchema = z.array(JobOfferSchema);
+const opportunitySummariesSchema = z.array(
+  ContributionOpportunitySummarySchema,
+);
+const opportunityPageSchema = z.object({
+  page: z.array(ContributionOpportunitySummarySchema),
+  isDone: z.boolean(),
+  continueCursor: z.string(),
+});
 const publicRunSchema = z
   .object({
     id: RunIdSchema,
@@ -142,11 +155,11 @@ const aggregateSchema = z.object({
 
 type ListAvailableArgs = {
   executorType?: ExecutorType;
-  limit: number;
+  paginationOpts: { numItems: number; cursor: string | null };
 };
 type SecretArgs = { developmentSecret: string };
-type AcquireArgs = SecretArgs & {
-  jobExternalId: string;
+type ClaimArgs = SecretArgs & {
+  opportunityExternalId: string;
   leaseExternalId: string;
   nodeExternalId: string;
   runExternalId: string;
@@ -159,7 +172,7 @@ type AcquireArgs = SecretArgs & {
 
 const functions = {
   listAvailable: makeFunctionReference<'query', ListAvailableArgs, unknown>(
-    'jobs:listAvailable',
+    'contributorOpportunities:listAvailable',
   ),
   inspectAggregate: makeFunctionReference<
     'query',
@@ -171,8 +184,8 @@ const functions = {
     SecretArgs & { nodeExternalId: string; limit: number },
     unknown
   >('jobs:listNodeActiveExecutions'),
-  acquire: makeFunctionReference<'mutation', AcquireArgs, unknown>(
-    'leases:acquire',
+  claim: makeFunctionReference<'mutation', ClaimArgs, unknown>(
+    'contributorOpportunities:claim',
   ),
   release: makeFunctionReference<
     'mutation',
@@ -294,7 +307,7 @@ const functions = {
 
 interface LeaseContext {
   readonly lease: JobLease;
-  readonly job: JobOffer['job'];
+  readonly job: JobDefinition;
   lastExternalSequence: number;
   lastProgressFingerprint?: string;
   readonly progressBySequence: Map<number, string>;
@@ -486,7 +499,6 @@ export class ConvexJobCoordinator implements JobCoordinator {
   readonly #client: ConvexCoordinatorClient;
   readonly #now: () => number;
   readonly #createId: (prefix: string) => string;
-  readonly #offers = new Map<string, JobOffer>();
   readonly #leases = new Map<string, LeaseContext>();
 
   public constructor(
@@ -523,58 +535,78 @@ export class ConvexJobCoordinator implements JobCoordinator {
     return context;
   }
 
-  public async listAvailableJobs(
-    request: Parameters<JobCoordinator['listAvailableJobs']>[0],
-  ): Promise<readonly JobOffer[]> {
-    const offers = await this.#call(
-      () =>
-        this.#client.query(functions.listAvailable, {
-          limit: 100,
-          ...(request.executorType === undefined
-            ? {}
-            : { executorType: request.executorType }),
-        }),
-      jobOffersSchema,
-    );
-    for (const offer of offers) this.#offers.set(offer.job.id, offer);
-    return offers;
+  public async listAvailableOpportunities(
+    request: Parameters<JobCoordinator['listAvailableOpportunities']>[0],
+  ): Promise<readonly ContributionOpportunitySummary[]> {
+    const opportunities: ContributionOpportunitySummary[] = [];
+    let cursor: string | null = null;
+    for (;;) {
+      const result = await this.#call(
+        () =>
+          this.#client.query(functions.listAvailable, {
+            ...(request.executorType === undefined
+              ? {}
+              : { executorType: request.executorType }),
+            paginationOpts: { numItems: 50, cursor },
+          }),
+        opportunityPageSchema,
+      );
+      opportunities.push(...result.page);
+      if (result.isDone) break;
+      if (result.continueCursor === cursor)
+        throw new CoordinatorProtocolMismatchError(
+          'Convex returned a non-advancing opportunity pagination cursor',
+        );
+      cursor = result.continueCursor;
+    }
+    return opportunitySummariesSchema.parse(opportunities);
   }
 
-  public async acquireLease(
-    request: Parameters<JobCoordinator['acquireLease']>[0],
-  ): Promise<JobLease> {
-    let offer = this.#offers.get(request.jobId);
-    if (offer === undefined) {
-      await this.listAvailableJobs({ executorType: request.executorType });
-      offer = this.#offers.get(request.jobId);
-    }
-    if (offer === undefined) {
-      throw mapConvexCoordinatorError({ data: { code: 'JOB_UNAVAILABLE' } });
+  public async claimOpportunity(
+    request: Parameters<JobCoordinator['claimOpportunity']>[0],
+  ): Promise<ClaimedContribution> {
+    if (request.nodeId !== this.#config.nodeExternalId) {
+      throw new CoordinatorError(
+        'lease_node_mismatch',
+        'Claim node does not match the configured coordinator node',
+      );
     }
     const now = this.#now();
-    const lease = await this.#call(
+    const claimed = await this.#call(
       () =>
-        this.#client.mutation(functions.acquire, {
-          jobExternalId: request.jobId,
-          leaseExternalId: this.#createId('lease'),
-          nodeExternalId: this.#config.nodeExternalId,
-          runExternalId: this.#createId('run'),
+        this.#client.mutation(functions.claim, {
+          opportunityExternalId: request.opportunityId,
+          leaseExternalId: request.leaseId,
+          runExternalId: request.runId,
+          nodeExternalId: request.nodeId,
           executorExternalId: request.executorId,
           contributorExternalId: request.contributorId,
           executorType: request.executorType,
           now,
-          durationMs: request.durationMs ?? this.#config.defaultLeaseDurationMs,
+          durationMs: request.durationMs,
           developmentSecret: this.#config.developmentSecret,
         }),
-      JobLeaseSchema,
+      ClaimedContributionSchema,
     );
-    this.#leases.set(lease.id, {
-      lease,
-      job: offer.job,
+    if (
+      claimed.opportunityId !== request.opportunityId ||
+      claimed.lease.id !== request.leaseId ||
+      claimed.lease.runId !== request.runId ||
+      claimed.lease.executorId !== request.executorId ||
+      claimed.lease.contributorId !== request.contributorId ||
+      claimed.lease.executorType !== request.executorType
+    ) {
+      throw new CoordinatorProtocolMismatchError(
+        'Convex returned a claim that does not match the request identities',
+      );
+    }
+    this.#leases.set(claimed.lease.id, {
+      lease: claimed.lease,
+      job: claimed.job,
       lastExternalSequence: -1,
       progressBySequence: new Map(),
     });
-    return lease;
+    return claimed;
   }
 
   public async startRun(

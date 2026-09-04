@@ -2,6 +2,7 @@ import {
   CoordinatorError,
   type JobCoordinator,
 } from '@causaic/coordinator-core';
+import type { JobId } from '@causaic/protocol';
 
 import type { LocalExecutionId, PendingOperationPayload } from './models.js';
 import type { DesktopRepositories } from './repositories.js';
@@ -22,27 +23,85 @@ export class JournaledJobCoordinator implements JobCoordinator {
     private readonly executionId: LocalExecutionId,
   ) {}
 
-  public listAvailableJobs: JobCoordinator['listAvailableJobs'] = (request) =>
-    this.delegate.listAvailableJobs(request);
+  public listAvailableOpportunities: JobCoordinator['listAvailableOpportunities'] =
+    (request) => this.delegate.listAvailableOpportunities(request);
+
+  public async claimOpportunity(
+    request: Parameters<JobCoordinator['claimOpportunity']>[0],
+  ) {
+    const execution = this.repositories.execution(this.executionId);
+    if (execution === undefined)
+      throw new Error('Local execution is missing');
+    if (
+      execution.opportunityId !== request.opportunityId ||
+      execution.nodeId !== request.nodeId ||
+      execution.executorId !== request.executorId
+    )
+      throw new CoordinatorError(
+        'invalid_request',
+        'The claim does not match the persisted execution',
+      );
+    if (execution.jobId !== null) {
+      if (
+        execution.leaseId !== request.leaseId ||
+        execution.runId !== request.runId
+      )
+        throw new CoordinatorError(
+          'invalid_request',
+          'A confirmed claim must be retried with the same identities',
+        );
+      return this.delegate.claimOpportunity(request);
+    }
+    const existing = this.repositories
+      .unconfirmedOperations(this.executionId)
+      .find(({ payload }) => payload.kind === 'claim_opportunity');
+    if (
+      existing?.payload.kind === 'claim_opportunity' &&
+      (existing.payload.opportunityId !== request.opportunityId ||
+        existing.payload.leaseId !== request.leaseId ||
+        existing.payload.runId !== request.runId)
+    )
+      throw new CoordinatorError(
+        'invalid_request',
+        'A pending claim must be retried with the same identities',
+      );
+    this.repositories.updateExecution(this.executionId, {
+      lifecycleStatus: 'leasing',
+    });
+    const operationId = this.repositories.beginOperation(
+      this.executionId,
+      {
+        kind: 'claim_opportunity',
+        opportunityId: request.opportunityId,
+        leaseId: request.leaseId,
+        runId: request.runId,
+      },
+      `claim:${this.executionId}:${request.opportunityId}`,
+    );
+    try {
+      const result = await this.delegate.claimOpportunity(request);
+      this.repositories.confirmClaim(
+        operationId,
+        this.executionId,
+        result.job.id,
+        result.lease.id,
+        result.lease.runId,
+      );
+      return result;
+    } catch (error) {
+      const failure = safeFailure(error);
+      this.repositories.failOperation(
+        operationId,
+        failure.code,
+        failure.message,
+      );
+      throw error;
+    }
+  }
 
   public getWorkflowDefinition: JobCoordinator['getWorkflowDefinition'] = (
     request,
   ) => this.delegate.getWorkflowDefinition(request);
-
-  public async acquireLease(
-    request: Parameters<JobCoordinator['acquireLease']>[0],
-  ) {
-    this.repositories.updateExecution(this.executionId, {
-      lifecycleStatus: 'leasing',
-    });
-    const result = await this.#operation(
-      { kind: 'acquire_lease', jobId: request.jobId },
-      `acquire:${this.executionId}`,
-      () => this.delegate.acquireLease(request),
-    );
-    this.repositories.bindLease(this.executionId, result.id, result.runId);
-    return result;
-  }
 
   public async startRun(request: Parameters<JobCoordinator['startRun']>[0]) {
     const result = await this.#operation(
@@ -262,9 +321,11 @@ export class JournaledJobCoordinator implements JobCoordinator {
     }
   }
 
-  #jobId() {
+  #jobId(): JobId {
     const execution = this.repositories.execution(this.executionId);
     if (execution === undefined) throw new Error('Local execution is missing');
+    if (execution.jobId === null)
+      throw new Error('The concrete job has not been bound to this execution');
     return execution.jobId;
   }
 }

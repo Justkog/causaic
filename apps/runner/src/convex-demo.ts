@@ -9,6 +9,7 @@ import {
   ApprovalIdSchema,
   ArtifactIdSchema,
   JobIdSchema,
+  OpportunityIdSchema,
 } from '@causaic/protocol';
 import type { JobId, NodeId } from '@causaic/protocol';
 import { RuntimeSessionIdSchema } from '@causaic/runtime-core';
@@ -199,19 +200,25 @@ export async function runConvexDemo(
     dependencies.wait ??
     ((durationMs: number) =>
       new Promise<void>((resolve) => setTimeout(resolve, durationMs)));
-  const offers = await dependencies.coordinator.listAvailableJobs({
-    executorType: 'plugin_host',
-  });
-  const offer = offers.find(({ job }) => job.id === targetJobId);
-  if (offer === undefined) {
+  const opportunities =
+    await dependencies.coordinator.listAvailableOpportunities({
+      executorType: 'plugin_host',
+    });
+  const opportunity = opportunities.find(
+    ({ id }) =>
+      id ===
+      OpportunityIdSchema.parse(
+        `opportunity_job-${targetJobId.slice('job_'.length)}`,
+      ),
+  );
+  if (opportunity === undefined) {
     throw new RunnerError(
       'job_unavailable',
-      `No compatible available job matched ${targetJobId}. Seed or publish a
-compatible fixture through the configured coordinator deployment.`,
+      `No compatible available opportunity matched ${targetJobId}. Seed or publish a compatible fixture through the configured coordinator deployment.`,
     );
   }
   const knownFixture = loadDemoFixtures();
-  if (knownFixture.cause.id !== offer.campaign.causeId) {
+  if (knownFixture.cause.id !== opportunity.cause.id) {
     throw new RunnerError(
       'fixture_cause_mismatch',
       `The Convex demo only supports the ${knownFixture.cause.id} fixture cause`,
@@ -219,14 +226,14 @@ compatible fixture through the configured coordinator deployment.`,
   }
   const fixture = {
     cause: knownFixture.cause,
-    campaign: offer.campaign,
-    job: offer.job,
+    campaign: knownFixture.campaign,
+    job: knownFixture.job,
   };
   const execution = await runDemo({
     coordinator: dependencies.coordinator,
     runtime,
     fixture,
-    offer,
+    opportunity,
     ...(dependencies.nodeId === undefined
       ? {}
       : { nodeId: dependencies.nodeId }),
@@ -256,7 +263,7 @@ compatible fixture through the configured coordinator deployment.`,
         }),
   });
   const state = await dependencies.coordinator.getJobState({
-    jobId: offer.job.id,
+    jobId: fixture.job.id,
   });
   const summary: ConvexDemoSummary = {
     status: execution.status,

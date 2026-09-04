@@ -1,8 +1,9 @@
 import {
   ApprovalIdSchema,
   ArtifactIdSchema,
+  ContributionOpportunitySummarySchema,
   JobIdSchema,
-  JobOfferSchema,
+  OpportunityIdSchema,
   JsonValueSchema,
 } from '@causaic/protocol';
 import { z } from 'zod';
@@ -31,7 +32,7 @@ export const DesktopExecutionEventSchema = z
     sequence: z.number().int().nonnegative(),
     occurredAt: z.iso.datetime(),
     type: z.enum([
-      'job.selected',
+      'opportunity.claimed',
       'runtime.selected',
       'lease.acquired',
       'run.started',
@@ -63,7 +64,8 @@ export type PendingApproval = z.infer<typeof PendingApprovalSchema>;
 
 export const CurrentExecutionSchema = z
   .object({
-    jobId: JobIdSchema,
+    opportunityId: OpportunityIdSchema.optional(),
+    jobId: JobIdSchema.optional(),
     objective: NonEmptyStringSchema,
     campaignName: NonEmptyStringSchema,
     status: z.enum([
@@ -93,7 +95,8 @@ const ArtifactSummarySchema = z
 
 export const RecentExecutionSchema = z
   .object({
-    jobId: JobIdSchema,
+    opportunityId: OpportunityIdSchema.optional(),
+    jobId: JobIdSchema.optional(),
     status: z.enum(['completed', 'cancelled', 'failed']),
     finishedAt: z.iso.datetime(),
     message: NonEmptyStringSchema,
@@ -134,7 +137,7 @@ export const DesktopStateSchema = z
     paused: z.boolean(),
     lastSelectedView: FocusTargetSchema,
     recovery: RecoveryStateSchema,
-    availableJobs: z.array(JobOfferSchema),
+    availableOpportunities: z.array(ContributionOpportunitySummarySchema),
     refreshedAt: z.iso.datetime().optional(),
     currentExecution: CurrentExecutionSchema.nullable(),
     recentExecution: RecentExecutionSchema.nullable(),
@@ -143,7 +146,7 @@ export const DesktopStateSchema = z
 export type DesktopState = z.infer<typeof DesktopStateSchema>;
 
 export const StartExecutionRequestSchema = z
-  .object({ jobId: JobIdSchema })
+  .object({ opportunityId: OpportunityIdSchema })
   .strict();
 export const CancelExecutionRequestSchema = z
   .object({ reason: NonEmptyStringSchema.optional() })
@@ -192,7 +195,7 @@ export type ResetLocalStateRequest = z.infer<
 
 export interface CausaicDesktopApi {
   getState(): Promise<DesktopState>;
-  refreshJobs(): Promise<DesktopState>;
+  refreshOpportunities(): Promise<DesktopState>;
   startExecution(request: StartExecutionRequest): Promise<DesktopState>;
   cancelExecution(request: CancelExecutionRequest): Promise<DesktopState>;
   resolveApproval(request: ResolveApprovalRequest): Promise<DesktopState>;
@@ -212,7 +215,7 @@ export const initialDesktopState = (): DesktopState =>
     paused: false,
     lastSelectedView: 'jobs',
     recovery: { status: 'not_started' },
-    availableJobs: [],
+    availableOpportunities: [],
     currentExecution: null,
     recentExecution: null,
   });

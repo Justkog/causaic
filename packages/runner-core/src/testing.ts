@@ -1,5 +1,9 @@
-import type { JobCoordinator } from '@causaic/coordinator-core';
-import { CampaignSchema, JobDefinitionSchema } from '@causaic/protocol';
+import {
+  CampaignSchema,
+  ContributionOpportunitySummarySchema,
+  JobDefinitionSchema,
+  OpportunityIdSchema,
+} from '@causaic/protocol';
 import type { RuntimeInstallation } from '@causaic/runtime-core';
 
 import type { RunnerIdFactory } from './types.js';
@@ -115,12 +119,32 @@ export const runnerCoreTestFixtures = {
   workflowDefinitions: [runnerCoreTestWorkflowDefinition],
 } as const;
 
-export async function createRunnerCoreTestOffer(coordinator: JobCoordinator) {
-  const [offer] = await coordinator.listAvailableJobs({
-    executorType: 'plugin_host',
+export function createRunnerCoreTestOpportunity() {
+  return ContributionOpportunitySummarySchema.parse({
+    id: OpportunityIdSchema.parse('opportunity_job-runner-core-test'),
+    cause: { id: job.causeId, name: campaign.name },
+    campaign: {
+      id: campaign.id,
+      name: campaign.name,
+      objective: campaign.name,
+    },
+    workstream: { id: job.workstreamId, name: 'Source verification' },
+    title: job.objective,
+    objective: job.objective,
+    workflow: {
+      reference: job.workflow,
+      requirements: job.workflowRequirements,
+    },
+    requiredAcceptedRuns: job.requiredAcceptedRuns,
+    priority: 'medium',
+    estimatedDurationMinutes: job.estimatedDurationMinutes,
+    capacityClass: job.capacityClass,
+    supportedExecutorTypes: job.supportedExecutorTypes,
+    requiresPersistentRunner: job.requiresPersistentRunner,
+    requiresCheckpointRecovery: job.requiresCheckpointRecovery,
+    createdAt: Date.parse(job.createdAt),
+    updatedAt: Date.parse(job.createdAt),
   });
-  if (offer === undefined) throw new Error('Runner core test offer is missing');
-  return offer;
 }
 
 export const runnerCoreTestIds: RunnerIdFactory = {

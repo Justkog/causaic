@@ -198,7 +198,7 @@ async function terminalConvexPrompt(
       `Approval required
 
 Cause: Open Public Evidence
-Job: Verify sources in transport-policy-report
+Opportunity: Verify sources in transport-policy-report
 Request: Allow access to ${request.domain}
 Reason: ${request.reason}
 

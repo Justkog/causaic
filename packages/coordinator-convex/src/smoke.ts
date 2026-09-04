@@ -1,4 +1,9 @@
-import { ExecutorIdSchema, UserIdSchema } from '@causaic/protocol';
+import {
+  ExecutorIdSchema,
+  LeaseIdSchema,
+  RunIdSchema,
+  UserIdSchema,
+} from '@causaic/protocol';
 import { makeFunctionReference } from 'convex/server';
 
 import { createConvexCoordinatorClient } from './client.js';
@@ -27,24 +32,26 @@ async function main(): Promise<void> {
   });
 
   const coordinator = new ConvexJobCoordinator(config, client);
-  const offers = await coordinator.listAvailableJobs({
+  const opportunities = await coordinator.listAvailableOpportunities({
     executorType: 'plugin_host',
   });
-  const offer = offers[0];
-  if (offer === undefined) {
+  const opportunity = opportunities[0];
+  if (opportunity === undefined) {
     throw new Error('The seeded fixture job is not available.');
   }
-  const lease = await coordinator.acquireLease({
-    jobId: offer.job.id,
+  const claimed = await coordinator.claimOpportunity({
+    opportunityId: opportunity.id,
+    leaseId: LeaseIdSchema.parse('lease_smoke'),
+    runId: RunIdSchema.parse('run_smoke'),
     nodeId: config.nodeExternalId,
     executorId: ExecutorIdSchema.parse('executor_smoke'),
     contributorId: UserIdSchema.parse('user_smoke'),
     executorType: 'plugin_host',
     durationMs: config.defaultLeaseDurationMs,
   });
-  await coordinator.releaseLease({ leaseId: lease.id });
+  await coordinator.releaseLease({ leaseId: claimed.lease.id });
   process.stdout.write(
-    `${JSON.stringify({ ok: true, jobId: offer.job.id, leaseId: lease.id })}\n`,
+    `${JSON.stringify({ ok: true, jobId: claimed.job.id, leaseId: claimed.lease.id })}\n`,
   );
 }
 

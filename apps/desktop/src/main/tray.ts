@@ -15,7 +15,7 @@ export function trayMenuTemplate(
 ): MenuItemConstructorOptions[] {
   return [
     {
-      label: `${state.availableJobs.length} available job${state.availableJobs.length === 1 ? '' : 's'}`,
+      label: `${state.availableOpportunities.length} available opportunit${state.availableOpportunities.length === 1 ? 'y' : 'ies'}`,
       enabled: false,
     },
     {
@@ -28,7 +28,9 @@ export function trayMenuTemplate(
     { type: 'separator' },
     { label: 'Open Causaic', click: actions.open },
     {
-      label: state.paused ? 'Resume new jobs' : 'Pause new jobs',
+      label: state.paused
+        ? 'Resume new opportunities'
+        : 'Pause new opportunities',
       click: () => actions.setPaused(!state.paused),
     },
     {

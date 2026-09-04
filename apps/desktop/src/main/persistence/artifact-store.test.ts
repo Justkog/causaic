@@ -62,7 +62,7 @@ describe('DesktopArtifactStore', () => {
       rootDirectory: handle.paths.artifacts,
       repositories,
       executionId: execution.id,
-      jobId,
+      jobId: () => jobId,
       runId: () => runId,
       createId: () => 'opaque-test',
       now: () => 100,

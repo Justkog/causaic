@@ -3,10 +3,11 @@ import type {
   ApprovalId,
   ArtifactId,
   ArtifactManifest,
+  ContributionOpportunitySummary,
   ExecutableWorkflowDefinition,
   ExecutorId,
   ExecutorType,
-  JobOffer,
+  JobId,
   JobState,
   LeaseId,
   MessageId,
@@ -80,7 +81,9 @@ export interface RunnerDependencies {
 }
 
 export interface StartExecutionRequest {
-  readonly offer: JobOffer;
+  readonly opportunity: ContributionOpportunitySummary;
+  readonly leaseId: LeaseId;
+  readonly runId: RunId;
   readonly installation: RuntimeInstallation;
   readonly executorId: ExecutorId;
   readonly nodeId: NodeId;
@@ -101,7 +104,7 @@ export interface CompletedExecutionResult {
 
 export interface CancelledExecutionResult {
   readonly status: 'cancelled';
-  readonly job: JobState;
+  readonly job?: JobState;
   readonly reason: string;
 }
 
@@ -132,7 +135,7 @@ export interface RunnerService {
 }
 
 export interface ExecutionContext {
-  readonly jobId: JobOffer['job']['id'];
+  readonly jobId: JobId;
   readonly leaseId: LeaseId;
   readonly runId: RunId;
 }

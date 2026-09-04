@@ -6,6 +6,7 @@ export * from './private-workflows.js';
 export * from './cause-management.js';
 export * from './fixtures.js';
 export * from './execution-state.js';
+export * from './generation-inputs.js';
 export * from './identifiers.js';
 export * from './schemas.js';
 export * from './workflow-catalog.js';

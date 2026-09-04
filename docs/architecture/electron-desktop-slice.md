@@ -3,7 +3,7 @@
 ## Purpose
 
 The first desktop milestone proves that a contributor can discover an exact
-local Convex offer, approve its start, execute it through runner-core and the
+local Convex opportunity, approve its start, execute it through runner-core and the
 fake runtime, respond to an intermediate approval, cancel it, and observe a
 terminal result from a secure Electron interface.
 
@@ -14,7 +14,7 @@ sandboxed React renderer
         ↕ validated preload methods and snapshots
 Electron main
   ├── revisioned renderer snapshot + SQLite repositories
-  ├── five-second Convex offer monitor
+  ├── five-second Convex opportunity monitor
   ├── one DesktopExecutionController
   ├── operation journal, recovery, and lease renewal
   ├── approval provider, durable artifacts, tray, and notifications
@@ -24,7 +24,7 @@ Electron main
 Main owns credentials, coordinator state, the running handle, approvals, local
 artifact paths, and cancellation. The renderer owns only view selection and
 transient dialogs. `DesktopExecutionHost` is the extraction seam for a future
-utility process; it accepts an exact portable `JobOffer` and returns the
+utility process; it accepts an exact portable `ContributionOpportunitySummary` and returns the
 runner-core `RunningExecution` contract.
 
 ## IPC and state hydration
@@ -46,17 +46,17 @@ events, local artifact paths, error causes, or cleanup errors.
 
 ## Lifecycle
 
-Job discovery requests `desktop_node`-compatible work. A start is accepted only
+Opportunity discovery requests `desktop_node`-compatible work. A start is accepted only
 when the backend is connected, the list is not stale, contribution is not
-paused, the exact job remains cached, and no execution is active. Runner-core
+paused, the exact opportunity remains cached, and no execution is active. Runner-core
 owns leasing, run transitions, progress deduplication, approval persistence,
 artifact validation/submission, completion, and failure cleanup.
 
 All live renderer, tray, and quit cancellation paths call
 `RunningExecution.cancel`.
 The result promise is authoritative and creates exactly one completed,
-cancelled, or failed recent result. Completion triggers an immediate job
-refresh.
+cancelled, or failed recent result. Completion triggers an immediate
+opportunity refresh.
 
 Closing hides the window. Confirmed quit cancels and waits without a forced
 timeout. Active leases renew at a bounded fraction of their duration. Resume
@@ -82,7 +82,7 @@ runtime work.
 
 The monitor refreshes immediately, every five seconds, after completion, on
 manual request, and after system resume. A failed refresh retains last-known
-offers with a stale warning. Invalid or non-loopback configuration produces a
+opportunities with a stale warning. Invalid or non-loopback configuration produces a
 failed-configuration state, while a native SQLite or migration failure produces
 a distinct failed-local-storage state. Recovery runs after a successful
 coordinator query without changing the connection result when reconciliation
@@ -96,7 +96,7 @@ own lockfile. Development verifies SQLite with Electron after
 tree before staging. No restore step is required. Windows and WSL remain
 separate installations of both dependency trees.
 
-Pause blocks new starts and new-job notifications while continuing polling and
+Pause blocks new starts and new-opportunity notifications while continuing polling and
 the active run. Main notifications are emitted only while the window is not
 focused; clicking them focuses Jobs or Execution.
 

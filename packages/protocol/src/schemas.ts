@@ -9,7 +9,8 @@ import {
   JobIdSchema,
   LeaseIdSchema,
   MessageIdSchema,
-  OfferIdSchema,
+  OpportunityIdSchema,
+  NodeIdSchema,
   RunIdSchema,
   UserIdSchema,
   WorkflowIdSchema,
@@ -17,13 +18,15 @@ import {
   WorkstreamIdSchema,
 } from './identifiers.js';
 import {
-  WorkstreamAvailabilityPolicySchema,
-  WorkstreamCompletionPolicySchema,
-  WorkstreamInventoryPolicySchema,
-  WorkstreamParticipationPolicySchema,
-} from './campaign-workstreams.js';
+  CapacityClassSchema,
+  ExecutorTypeSchema,
+  JobPrioritySchema,
+} from './job-management.js';
 import { WorkflowVersionRequirementsSchema } from './agent-task.js';
 import { JsonValueSchema, Sha256Schema } from './workflow-data.js';
+
+export { CapacityClassSchema, ExecutorTypeSchema } from './job-management.js';
+export type { CapacityClass, ExecutorType } from './job-management.js';
 
 export const PROTOCOL_VERSION = 1 as const;
 export const ProtocolVersionSchema = z.literal(PROTOCOL_VERSION);
@@ -36,16 +39,6 @@ const VersionedObjectSchema = z.object({
 export const TimestampSchema = z.iso.datetime({ offset: true });
 export type Timestamp = z.infer<typeof TimestampSchema>;
 const NonEmptyStringSchema = z.string().trim().min(1);
-
-export const CapacityClassSchema = z.enum(['small', 'medium', 'large']);
-export type CapacityClass = z.infer<typeof CapacityClassSchema>;
-
-export const ExecutorTypeSchema = z.enum([
-  'desktop_node',
-  'plugin_host',
-  'scheduled_plugin_host',
-]);
-export type ExecutorType = z.infer<typeof ExecutorTypeSchema>;
 
 export const JobStatusSchema = z.enum([
   'draft',
@@ -205,19 +198,6 @@ export const CampaignSchema = VersionedObjectSchema.extend({
 }).strict();
 export type Campaign = z.infer<typeof CampaignSchema>;
 
-export const JobOfferWorkstreamSchema = VersionedObjectSchema.extend({
-  messageType: z.literal('campaign.workstream'),
-  id: WorkstreamIdSchema,
-  campaignId: CampaignIdSchema,
-  name: NonEmptyStringSchema,
-  workflow: WorkflowReferenceSchema,
-  status: z.literal('active'),
-  availabilityPolicy: WorkstreamAvailabilityPolicySchema,
-  inventoryPolicy: WorkstreamInventoryPolicySchema,
-  participationPolicy: WorkstreamParticipationPolicySchema,
-  completionPolicy: WorkstreamCompletionPolicySchema,
-}).strict();
-
 export const JobDefinitionSchema = VersionedObjectSchema.extend({
   messageType: z.literal('job.definition'),
   id: JobIdSchema,
@@ -231,7 +211,6 @@ export const JobDefinitionSchema = VersionedObjectSchema.extend({
   input: JsonValueSchema,
   requiredAcceptedRuns: z.number().int().positive(),
   acceptedRunCount: z.number().int().nonnegative(),
-  sourceItemKey: NonEmptyStringSchema.optional(),
   capacityClass: CapacityClassSchema,
   estimatedDurationMinutes: z.number().int().positive(),
   supportedExecutorTypes: z.array(ExecutorTypeSchema).min(1),
@@ -241,62 +220,83 @@ export const JobDefinitionSchema = VersionedObjectSchema.extend({
 }).strict();
 export type JobDefinition = z.infer<typeof JobDefinitionSchema>;
 
-export const JobOfferSchema = VersionedObjectSchema.extend({
-  messageType: z.literal('job.offer'),
-  messageId: MessageIdSchema,
-  id: OfferIdSchema,
-  campaign: CampaignSchema,
-  workstream: JobOfferWorkstreamSchema,
-  job: JobDefinitionSchema,
-  offeredAt: TimestampSchema,
-  expiresAt: TimestampSchema,
-})
-  .strict()
-  .superRefine(({ campaign, workstream, job }, context) => {
-    if (campaign.status !== 'active') {
-      context.addIssue({
-        code: 'custom',
-        path: ['campaign', 'status'],
-        message: 'Job offers require an active campaign',
-      });
-    }
-    if (job.campaignId !== campaign.id) {
-      context.addIssue({
-        code: 'custom',
-        path: ['job', 'campaignId'],
-        message: 'Job campaignId must match the offered campaign',
-      });
-    }
-    if (job.causeId !== campaign.causeId) {
-      context.addIssue({
-        code: 'custom',
-        path: ['job', 'causeId'],
-        message: 'Job causeId must match the offered campaign',
-      });
-    }
-    if (
-      job.workstreamId !== workstream.id ||
-      workstream.campaignId !== campaign.id
-    ) {
-      context.addIssue({
-        code: 'custom',
-        path: ['job', 'workstreamId'],
-        message: 'Job workstream must match the offered workstream',
-      });
-    }
-    if (
-      job.workflow.id !== workstream.workflow.id ||
-      job.workflow.version !== workstream.workflow.version ||
-      job.workflow.packageHash !== workstream.workflow.packageHash
-    ) {
-      context.addIssue({
-        code: 'custom',
-        path: ['job', 'workflow'],
-        message: 'Job workflow must match the workstream-pinned workflow',
-      });
-    }
-  });
-export type JobOffer = z.infer<typeof JobOfferSchema>;
+export const ContributorWorkflowProjectionSchema = z
+  .object({
+    reference: WorkflowReferenceSchema,
+    requirements: WorkflowVersionRequirementsSchema,
+  })
+  .strict();
+export type ContributorWorkflowProjection = z.infer<
+  typeof ContributorWorkflowProjectionSchema
+>;
+
+const OpportunityContextSchema = z
+  .object({
+    id: z.string().trim().min(1),
+    name: NonEmptyStringSchema,
+  })
+  .strict();
+
+export const ContributionOpportunitySummarySchema = z
+  .object({
+    id: OpportunityIdSchema,
+    cause: OpportunityContextSchema.extend({ id: CauseIdSchema }).strict(),
+    campaign: OpportunityContextSchema.extend({ id: CampaignIdSchema })
+      .extend({
+        objective: NonEmptyStringSchema,
+      })
+      .strict(),
+    workstream: OpportunityContextSchema.extend({
+      id: WorkstreamIdSchema,
+    }).strict(),
+    title: NonEmptyStringSchema,
+    summary: NonEmptyStringSchema.optional(),
+    objective: NonEmptyStringSchema.optional(),
+    workflow: ContributorWorkflowProjectionSchema,
+    requiredAcceptedRuns: z.number().int().positive(),
+    priority: JobPrioritySchema,
+    estimatedDurationMinutes: z.number().int().positive(),
+    capacityClass: CapacityClassSchema.optional(),
+    supportedExecutorTypes: z.array(ExecutorTypeSchema).min(1),
+    requiresPersistentRunner: z.boolean(),
+    requiresCheckpointRecovery: z.boolean(),
+    availableFrom: z.number().finite().optional(),
+    availableUntil: z.number().finite().optional(),
+    createdAt: z.number().finite(),
+    updatedAt: z.number().finite(),
+  })
+  .strict();
+export type ContributionOpportunitySummary = z.infer<
+  typeof ContributionOpportunitySummarySchema
+>;
+
+export const ContributionOpportunityDetailSchema =
+  ContributionOpportunitySummarySchema.extend({
+    input: JsonValueSchema,
+    validationParameters: JsonValueSchema.optional(),
+  }).strict();
+export type ContributionOpportunityDetail = z.infer<
+  typeof ContributionOpportunityDetailSchema
+>;
+export const ContributionOpportunitySchema =
+  ContributionOpportunityDetailSchema;
+export type ContributionOpportunity = ContributionOpportunityDetail;
+
+export const ClaimOpportunityRequestSchema = z
+  .object({
+    opportunityId: OpportunityIdSchema,
+    leaseId: LeaseIdSchema,
+    runId: RunIdSchema,
+    nodeId: NodeIdSchema,
+    executorId: ExecutorIdSchema,
+    contributorId: UserIdSchema,
+    executorType: ExecutorTypeSchema,
+    durationMs: z.number().int().positive(),
+  })
+  .strict();
+export type ClaimOpportunityRequest = z.infer<
+  typeof ClaimOpportunityRequestSchema
+>;
 
 export const JobLeaseSchema = VersionedObjectSchema.extend({
   messageType: z.literal('job.lease'),
@@ -312,6 +312,24 @@ export const JobLeaseSchema = VersionedObjectSchema.extend({
   expiresAt: TimestampSchema,
 }).strict();
 export type JobLease = z.infer<typeof JobLeaseSchema>;
+
+export const ClaimedContributionSchema = z
+  .object({
+    opportunityId: OpportunityIdSchema,
+    job: JobDefinitionSchema,
+    lease: JobLeaseSchema,
+  })
+  .strict()
+  .superRefine(({ job, lease }, context) => {
+    if (lease.jobId !== job.id) {
+      context.addIssue({
+        code: 'custom',
+        path: ['lease', 'jobId'],
+        message: 'Claim lease must belong to the materialized job',
+      });
+    }
+  });
+export type ClaimedContribution = z.infer<typeof ClaimedContributionSchema>;
 
 const JobProgressBaseSchema = VersionedObjectSchema.extend({
   messageType: z.literal('job.progress'),
@@ -415,7 +433,6 @@ export type ArtifactManifest = z.infer<typeof ArtifactManifestSchema>;
 export const ProtocolMessageSchema = z.discriminatedUnion('messageType', [
   CampaignSchema,
   JobDefinitionSchema,
-  JobOfferSchema,
   JobLeaseSchema,
   JobProgressEventSchema,
   ApprovalRequestSchema,

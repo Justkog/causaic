@@ -6,7 +6,9 @@ import { MemoryJobCoordinator } from '@causaic/coordinator-memory';
 import {
   ExecutorIdSchema,
   JobIdSchema,
+  LeaseIdSchema,
   NodeIdSchema,
+  RunIdSchema,
   UserIdSchema,
 } from '@causaic/protocol';
 import { runnerCoreTestFixtures } from '@causaic/runner-core/testing';
@@ -58,14 +60,21 @@ describe('LeaseRenewalService', () => {
       now: () => now,
       createId: () => `renewal-${nextId++}`,
     });
-    const lease = await coordinator.acquireLease({
-      jobId,
+    const opportunity = (
+      await coordinator.listAvailableOpportunities({ executorType: 'plugin_host' })
+    ).find(({ id }) => id.endsWith(jobId.slice('job_'.length)));
+    expect(opportunity).toBeDefined();
+    const claimed = await coordinator.claimOpportunity({
+      opportunityId: opportunity!.id,
+      leaseId: LeaseIdSchema.parse('lease_renewal-test'),
+      runId: RunIdSchema.parse('run_renewal-test'),
       nodeId,
       executorId,
       contributorId: UserIdSchema.parse('user_renewal-test'),
       executorType: 'plugin_host',
       durationMs: 120_000,
     });
+    const lease = claimed.lease;
     const execution = repositories.createExecution({
       jobId,
       nodeId,

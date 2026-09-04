@@ -80,12 +80,12 @@ function fixture() {
 }
 
 describe('DesktopExecutionController', () => {
-  it('runs one exact offer and exposes no local artifact path', async () => {
+  it('runs one exact opportunity and exposes no local artifact path', async () => {
     const { controller, monitor, state } = fixture();
     await monitor.refresh();
-    const offer = state.get().availableJobs[0];
-    expect(offer).toBeDefined();
-    await controller.start(offer!.job.id);
+    const opportunity = state.get().availableOpportunities[0];
+    expect(opportunity).toBeDefined();
+    await controller.start(opportunity!.id);
     const pending = await waitForState(
       state,
       (value) => value.currentExecution?.pendingApproval !== undefined,
@@ -109,9 +109,9 @@ describe('DesktopExecutionController', () => {
   it('rejects a duplicate start and cancels through the running handle', async () => {
     const { controller, monitor, state } = fixture();
     await monitor.refresh();
-    const offer = state.get().availableJobs[0]!;
-    await controller.start(offer.job.id);
-    await expect(controller.start(offer.job.id)).rejects.toThrow(
+    const opportunity = state.get().availableOpportunities[0]!;
+    await controller.start(opportunity.id);
+    await expect(controller.start(opportunity.id)).rejects.toThrow(
       /already active/i,
     );
     await waitForState(

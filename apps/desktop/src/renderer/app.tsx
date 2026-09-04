@@ -39,7 +39,7 @@ function ConnectionStatus() {
         {state.connection.status.replaceAll('_', ' ')}
       </span>
       {state.connection.stale && (
-        <span className="text-amber-800">Last-known jobs</span>
+        <span className="text-amber-800">Last-known opportunities</span>
       )}
     </div>
   );
@@ -48,7 +48,9 @@ function ConnectionStatus() {
 function JobsView() {
   const { state, refresh, start } = useDesktopState();
   const [selectedId, setSelectedId] = useState<string>();
-  const selected = state.availableJobs.find(({ job }) => job.id === selectedId);
+  const selected = state.availableOpportunities.find(
+    ({ id }) => id === selectedId,
+  );
   const canStart =
     !state.paused &&
     state.connection.status === 'connected' &&
@@ -62,10 +64,10 @@ function JobsView() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-950">
-            Available jobs
+            Available opportunities
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Choose one exact offer and review it before contributing.
+            Choose one opportunity and review it before contributing.
           </p>
         </div>
         <Button variant="secondary" onClick={() => void refresh()}>
@@ -75,43 +77,41 @@ function JobsView() {
 
       {state.paused && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-          New contributions are paused. The job list continues to refresh.
+          New contributions are paused. The opportunity list continues to
+          refresh.
         </div>
       )}
 
-      {state.availableJobs.length === 0 ? (
+      {state.availableOpportunities.length === 0 ? (
         <Card>
           <h2 className="font-semibold">No compatible work is available</h2>
           <p className="mt-2 text-sm text-slate-600">
-            A job may have been leased elsewhere. Keep this app open or refresh
-            later.
+            An opportunity may have been claimed elsewhere. Keep this app open
+            or refresh later.
           </p>
         </Card>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
-          {state.availableJobs.map((offer) => (
-            <Card key={offer.id} className="flex flex-col">
+          {state.availableOpportunities.map((opportunity) => (
+            <Card key={opportunity.id} className="flex flex-col">
               <div className="flex items-center justify-between gap-3">
                 <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-900">
-                  {offer.job.capacityClass}
+                  {opportunity.capacityClass ?? 'standard'}
                 </span>
                 <span className="text-xs text-slate-500">
-                  ~{offer.job.estimatedDurationMinutes} min
+                  ~{opportunity.estimatedDurationMinutes} min
                 </span>
               </div>
               <h2 className="mt-4 text-lg font-semibold">
-                {offer.job.objective}
+                {opportunity.objective ?? opportunity.title}
               </h2>
               <p className="mt-2 text-sm text-slate-600">
-                {offer.campaign.name}
+                {opportunity.campaign.name}
               </p>
-              <pre className="mt-4 max-h-32 overflow-auto rounded bg-slate-50 p-3 text-xs text-slate-700">
-                {JSON.stringify(offer.job.input, null, 2)}
-              </pre>
               <div className="mt-auto pt-5">
                 <Button
                   disabled={!canStart}
-                  onClick={() => setSelectedId(offer.job.id)}
+                  onClick={() => setSelectedId(opportunity.id)}
                 >
                   <Play className="mr-2 h-4 w-4" aria-hidden /> Review and start
                 </Button>
@@ -133,15 +133,12 @@ function JobsView() {
               Start this contribution?
             </h2>
             <p className="mt-3 text-sm text-slate-700">
-              {selected.job.objective}
+              {selected.objective ?? selected.title}
             </p>
             <p className="mt-3 text-sm text-slate-600">
-              The fake runtime will request approval before accessing the
-              declared public source.
+              The runtime will request approval before accessing the declared
+              public source.
             </p>
-            <pre className="mt-3 max-h-48 overflow-auto rounded bg-slate-50 p-3 text-xs text-slate-700">
-              {JSON.stringify(selected.job.input, null, 2)}
-            </pre>
             <div className="mt-6 flex justify-end gap-3">
               <Button
                 variant="secondary"
@@ -151,9 +148,9 @@ function JobsView() {
               </Button>
               <Button
                 onClick={() => {
-                  const jobId = selected.job.id;
+                  const opportunityId = selected.id;
                   setSelectedId(undefined);
-                  void start(jobId);
+                  void start(opportunityId);
                 }}
               >
                 Start contribution
@@ -183,7 +180,7 @@ function ExecutionView() {
         <Card>
           <h2 className="font-semibold">No active execution</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Select an available job to begin.
+            Select an available opportunity to begin.
           </p>
         </Card>
       ) : (
@@ -334,7 +331,9 @@ function SettingsView() {
           onClick={() => void setPaused(!state.paused)}
         >
           <CirclePause className="mr-2 h-4 w-4" aria-hidden />
-          {state.paused ? 'Resume new jobs' : 'Pause new jobs'}
+          {state.paused
+            ? 'Resume new opportunities'
+            : 'Pause new opportunities'}
         </Button>
       </Card>
       <Card>
@@ -405,7 +404,7 @@ export function App() {
     );
 
   const navigation = [
-    { id: 'jobs' as const, label: 'Jobs', icon: BriefcaseBusiness },
+    { id: 'jobs' as const, label: 'Opportunities', icon: BriefcaseBusiness },
     { id: 'execution' as const, label: 'Execution', icon: TerminalSquare },
     { id: 'settings' as const, label: 'Settings', icon: Settings },
   ];

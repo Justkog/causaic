@@ -3,10 +3,11 @@
 ## Scope
 
 `@causaic/runner-core` is the provider-neutral in-process boundary for one
-caller-selected execution. The caller discovers jobs, applies eligibility and
-scheduling policy, selects a runtime installation, and passes one exact
-`JobOffer` to the service. The package does not construct coordinators or
-runtimes and does not read environment variables.
+caller-selected execution. The caller discovers contribution opportunities,
+applies eligibility and scheduling policy, selects a runtime installation, and
+passes one exact `ContributionOpportunitySummary` to the service. The package
+does not construct coordinators or runtimes and does not read environment
+variables.
 
 This milestone does not choose an Electron utility process or a daemon. It adds
 no runner registry, capacity scheduler, lease renewal, checkpoints, SQLite, IPC,

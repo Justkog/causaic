@@ -4,7 +4,7 @@ export type DesktopErrorCode =
   | 'execution_active'
   | 'internal_failure'
   | 'invalid_request'
-  | 'job_stale'
+  | 'opportunity_stale'
   | 'approval_not_pending';
 
 export class DesktopError extends Error {
