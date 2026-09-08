@@ -25,7 +25,7 @@ const publicSourceGlobs = [
   'packages/workflow-schema/src/**/*.ts',
   'packages/runner-core/src/**/*.ts',
   'packages/runtime-fake/src/**/*.ts',
-  'workflows/**/*.ts',
+  'fixtures/**/*.ts',
 ];
 
 export default tseslint.config(

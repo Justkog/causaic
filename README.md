@@ -79,7 +79,7 @@ platform. See [`apps/desktop/README.md`](apps/desktop/README.md) for details.
 - `packages/runner-core` — runtime/coordinator execution orchestration
 - `packages/workflow-schema` — portable workflow and JSON validation helpers
 - `plugins` — contributor and operator agent plugins
-- `workflows/source-verification` — minimal validated workflow fixture
+- `fixtures/source-verification` — canonical source-verification development fixture
 - `docs` — public execution architecture and plugin documentation
 
 The hosted coordinator, authentication, MCP server implementation, and

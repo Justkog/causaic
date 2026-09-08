@@ -13,7 +13,7 @@ import {
   MessageIdSchema,
 } from '@causaic/protocol';
 import type { JsonValue } from '@causaic/protocol';
-import { sourceVerificationExecutableDefinitionFixture } from '@causaic/workflow-source-verification';
+import { sourceVerificationExecutableDefinitionFixture } from '@causaic/source-verification-fixture';
 import { RuntimeSessionIdSchema } from '@causaic/runtime-core';
 
 const inputSchemaHash =

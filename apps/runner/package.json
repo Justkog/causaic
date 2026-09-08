@@ -21,7 +21,7 @@
     "@causaic/runtime-core": "workspace:*",
     "@causaic/runtime-fake": "workspace:*",
     "@causaic/workflow-schema": "workspace:*",
-    "@causaic/workflow-source-verification": "workspace:*",
+    "@causaic/source-verification-fixture": "workspace:*",
     "convex": "^1.42.2",
     "zod": "^4.3.6"
   }

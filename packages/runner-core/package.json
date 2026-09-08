@@ -28,7 +28,7 @@
   "devDependencies": {
     "@causaic/coordinator-memory": "workspace:*",
     "@causaic/runtime-fake": "workspace:*",
-    "@causaic/workflow-source-verification": "workspace:*",
+    "@causaic/source-verification-fixture": "workspace:*",
     "vitest": "^4.1.10"
   }
 }

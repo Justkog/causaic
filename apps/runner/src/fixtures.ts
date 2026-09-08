@@ -4,7 +4,7 @@ import {
   JobDefinitionSchema,
 } from '@causaic/protocol';
 import { MemoryJobCoordinator } from '@causaic/coordinator-memory';
-import { sourceVerificationExecutableDefinitionFixture } from '@causaic/workflow-source-verification';
+import { sourceVerificationExecutableDefinitionFixture } from '@causaic/source-verification-fixture';
 import type { DemoFixture } from './demo.js';
 
 export const demoCauseInput = {
