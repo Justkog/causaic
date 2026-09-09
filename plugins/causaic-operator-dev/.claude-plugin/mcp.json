@@ -2,10 +2,7 @@
   "mcpServers": {
     "causaic-operator-dev": {
       "type": "http",
-      "url": "https://compassionate-swordfish-378.eu-west-1.convex.site/mcp/operator",
-      "oauth": {
-        "clientId": "xgWK8b7J0v9LJvhE"
-      }
+      "url": "https://compassionate-swordfish-378.eu-west-1.convex.site/mcp/operator"
     }
   }
 }

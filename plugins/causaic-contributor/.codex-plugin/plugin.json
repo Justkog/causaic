@@ -1,0 +1,24 @@
+{
+  "name": "causaic-contributor",
+  "version": "0.1.0+codex.20260909111626",
+  "description": "Causaic contributor tools, invitation access, and guided job execution workflows.",
+  "author": {
+    "name": "Causaic"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Causaic Contributor",
+    "shortDescription": "Discover, join, and execute Causaic work.",
+    "longDescription": "Connects Codex to the Causaic contributor MCP and provides guided cause discovery, invitation access, explicit membership, job execution, and contribution-history skills.",
+    "developerName": "Causaic",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Use the Causaic contributor tools to discover, execute, or review a contribution."
+  },
+  "mcpServers": {
+    "causaic-contributor": {
+      "type": "http",
+      "url": "https://befitting-chickadee-185.convex.site/mcp/contributor"
+    }
+  }
+}

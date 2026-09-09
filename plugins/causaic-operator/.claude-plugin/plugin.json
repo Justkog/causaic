@@ -1,0 +1,9 @@
+{
+  "name": "causaic-operator",
+  "version": "0.1.0",
+  "description": "Causaic operator tools for visibility, invitations, publication, work management, artifact validation, and accepted-artifact exports.",
+  "author": {
+    "name": "Causaic"
+  },
+  "mcpServers": "./.claude-plugin/mcp.json"
+}

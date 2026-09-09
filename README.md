@@ -63,6 +63,8 @@ platform. See [`apps/desktop/README.md`](apps/desktop/README.md) for details.
 - `pnpm build` — build all workspaces
 - `pnpm desktop:dev` — start the local Electron application
 - `pnpm desktop:package` — build an unpacked current-platform application
+- `pnpm plugins:dev:check` / `pnpm plugins:dev:sync` — validate or update development plugin metadata
+- `pnpm plugins:prod:check` / `pnpm plugins:prod:sync` — validate or update production plugin metadata
 - `pnpm plugins:marketplace:check` — validate plugin marketplaces
 - `pnpm check` — run formatting, linting, type-checking, and tests
 

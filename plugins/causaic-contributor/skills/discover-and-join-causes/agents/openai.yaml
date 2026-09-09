@@ -1,0 +1,11 @@
+interface:
+  display_name: 'Discover and join Causaic causes'
+  short_description: 'Discover, inspect invitations, and join Causaic causes.'
+  default_prompt: 'Use $discover-and-join-causes to find, inspect, or explicitly join a Causaic cause.'
+dependencies:
+  tools:
+    - type: 'mcp'
+      value: 'causaic-contributor'
+      description: 'Causaic contributor MCP server'
+      transport: 'streamable_http'
+      url: 'https://befitting-chickadee-185.convex.site/mcp/contributor'

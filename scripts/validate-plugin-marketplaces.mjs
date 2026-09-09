@@ -13,10 +13,12 @@ const marketplacePaths = {
   codex: path.join(repositoryRoot, '.agents/plugins/marketplace.json'),
   claude: path.join(repositoryRoot, '.claude-plugin/marketplace.json'),
 };
-const allowedPluginSets = [
-  new Set(['causaic-contributor-dev', 'causaic-operator-dev']),
-  new Set(['causaic-contributor', 'causaic-operator']),
-];
+const allowedPluginSet = new Set([
+  'causaic-contributor-dev',
+  'causaic-operator-dev',
+  'causaic-contributor',
+  'causaic-operator',
+]);
 
 function fail(message) {
   throw new Error(message);
@@ -96,6 +98,23 @@ async function assertNoSymlinks(directory) {
   }
 }
 
+function assertDiscoveredMcpServers(servers, label) {
+  assertObject(servers, `${label} MCP servers`);
+  for (const [serverName, config] of Object.entries(servers)) {
+    assertObject(config, `${label} MCP server ${serverName}`);
+    if (config?.type !== 'http' || typeof config.url !== 'string') {
+      fail(`${label} MCP server ${serverName} must use an HTTP URL`);
+    }
+    if (
+      'oauth' in config ||
+      'oauth_client_id' in config ||
+      'oauth_resource' in config
+    ) {
+      fail(`${label} MCP server ${serverName} must use OAuth discovery`);
+    }
+  }
+}
+
 async function validatePlugin(name, source) {
   const resolved = path.resolve(repositoryRoot, source);
   const relativeToPlugins = path.relative(pluginRoot, resolved);
@@ -127,6 +146,8 @@ async function validatePlugin(name, source) {
 
   const codexManifest = await readJson(codexManifestPath);
   const claudeManifest = await readJson(claudeManifestPath);
+  const sharedMcp = await readJson(sharedMcpPath);
+  const claudeMcp = await readJson(claudeMcpPath);
   if (codexManifest.name !== name || claudeManifest.name !== name) {
     fail(`${name} host manifests must use the marketplace plugin name`);
   }
@@ -141,23 +162,9 @@ async function validatePlugin(name, source) {
     fail(`${name} Claude manifest must point to its host MCP adapter`);
   }
 
-  const sharedMcp = await readJson(sharedMcpPath);
-  assertObject(sharedMcp.mcpServers, `${name} shared MCP servers`);
-  for (const [serverName, config] of Object.entries(sharedMcp.mcpServers)) {
-    assertObject(config, `${name} shared MCP server ${serverName}`);
-    if (config?.type !== 'http' || typeof config.url !== 'string') {
-      fail(`${name} shared MCP server ${serverName} must use an HTTP URL`);
-    }
-    if (
-      'oauth' in config ||
-      'oauth_client_id' in config ||
-      'oauth_resource' in config
-    ) {
-      fail(
-        `${name} shared MCP server ${serverName} contains host-specific OAuth fields`,
-      );
-    }
-  }
+  assertDiscoveredMcpServers(sharedMcp.mcpServers, `${name} shared`);
+  assertDiscoveredMcpServers(codexManifest.mcpServers, `${name} Codex`);
+  assertDiscoveredMcpServers(claudeMcp.mcpServers, `${name} Claude`);
   await assertNoSymlinks(resolved);
 }
 
@@ -183,14 +190,11 @@ for (const name of codexNames) {
 }
 
 if (
-  !allowedPluginSets.some(
-    (allowed) =>
-      codexNames.every((name) => allowed.has(name)) &&
-      allowed.size === codexNames.length,
-  )
+  codexNames.length !== allowedPluginSet.size ||
+  codexNames.some((name) => !allowedPluginSet.has(name))
 ) {
   fail(
-    'marketplaces must list either the complete dev set or complete production set',
+    'marketplaces must list the complete development and production plugin sets',
   );
 }
 

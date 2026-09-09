@@ -1,0 +1,11 @@
+interface:
+  display_name: 'Manage published Causaic work'
+  short_description: 'Operate published Causaic campaigns and workstreams.'
+  default_prompt: 'Use $manage-causaic-work to operate published Causaic work safely.'
+dependencies:
+  tools:
+    - type: 'mcp'
+      value: 'causaic-operator'
+      description: 'Causaic operator MCP server'
+      transport: 'streamable_http'
+      url: 'https://befitting-chickadee-185.convex.site/mcp/operator'

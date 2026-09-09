@@ -1,0 +1,11 @@
+interface:
+  display_name: 'Publish Causaic contributor work'
+  short_description: 'Configure manual or input-driven contributor work.'
+  default_prompt: 'Use $publish-causaic-job to configure Causaic contributor work, preferring dataset-backed input inventory when appropriate.'
+dependencies:
+  tools:
+    - type: 'mcp'
+      value: 'causaic-operator'
+      description: 'Causaic operator MCP server'
+      transport: 'streamable_http'
+      url: 'https://befitting-chickadee-185.convex.site/mcp/operator'

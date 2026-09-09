@@ -1,0 +1,11 @@
+interface:
+  display_name: 'Validate Causaic artifacts'
+  short_description: 'Review and decide submitted Causaic artifacts.'
+  default_prompt: 'Use $validate-causaic-artifacts to review pending Causaic artifacts safely.'
+dependencies:
+  tools:
+    - type: 'mcp'
+      value: 'causaic-operator'
+      description: 'Causaic operator MCP server'
+      transport: 'streamable_http'
+      url: 'https://befitting-chickadee-185.convex.site/mcp/operator'

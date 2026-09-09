@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "causaic-contributor": {
+      "type": "http",
+      "url": "https://befitting-chickadee-185.convex.site/mcp/contributor"
+    }
+  }
+}

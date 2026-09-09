@@ -1,0 +1,11 @@
+interface:
+  display_name: 'Execute a Causaic contribution'
+  short_description: 'Run a Causaic contribution through its safe MCP lifecycle.'
+  default_prompt: 'Use $execute-causaic-job to execute a Causaic contribution from discovery through completion.'
+dependencies:
+  tools:
+    - type: 'mcp'
+      value: 'causaic-contributor'
+      description: 'Causaic contributor MCP server'
+      transport: 'streamable_http'
+      url: 'https://befitting-chickadee-185.convex.site/mcp/contributor'

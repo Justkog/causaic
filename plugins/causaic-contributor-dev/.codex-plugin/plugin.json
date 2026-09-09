@@ -1,6 +1,6 @@
 {
   "name": "causaic-contributor-dev",
-  "version": "0.1.0+codex.20260904123652",
+  "version": "0.1.0+codex.20260909111626",
   "description": "Development-only Causaic contributor tools, invitation access, and guided job execution workflows.",
   "author": {
     "name": "Causaic"
@@ -18,10 +18,7 @@
   "mcpServers": {
     "causaic-contributor-dev": {
       "type": "http",
-      "url": "https://compassionate-swordfish-378.eu-west-1.convex.site/mcp/contributor",
-      "oauth": {
-        "clientId": "xgWK8b7J0v9LJvhE"
-      }
+      "url": "https://compassionate-swordfish-378.eu-west-1.convex.site/mcp/contributor"
     }
   }
 }

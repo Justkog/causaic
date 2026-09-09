@@ -1,7 +1,7 @@
-# Causaic development Codex plugins
+# Causaic agent plugins
 
-This repository contains two Codex plugins for testing the authenticated MCP
-connections against the Convex development deployment:
+This repository contains development and production plugin pairs for the
+authenticated Causaic MCP connections:
 
 - `causaic-contributor-dev` — contributor discovery, email invitation access,
   membership, bounded job execution, artifact submission, and contribution
@@ -10,10 +10,13 @@ connections against the Convex development deployment:
   campaign, workflow, workstream, and job
   management plus submitted-artifact validation, decisions, and accepted-artifact
   exports.
+- `causaic-contributor` — the same contributor tools against the production
+  Convex deployment;
+- `causaic-operator` — the same operator tools against the production Convex
+  deployment.
 
-The `dev` suffix is intentional. Codex plugin IDs are static; they do not
-change based on `.env` values. Production plugins should be separate IDs when a
-production deployment exists.
+The `dev` suffix identifies the development deployment. Plugin IDs are static;
+they do not change based on `.env` values, so production uses separate IDs.
 
 ## Install from this checkout
 
@@ -23,6 +26,8 @@ From the repository root, add the local marketplace once:
 codex plugin marketplace add .
 codex plugin add causaic-contributor-dev@causaic
 codex plugin add causaic-operator-dev@causaic
+codex plugin add causaic-contributor@causaic
+codex plugin add causaic-operator@causaic
 ```
 
 Open a new Codex desktop conversation after installation. Installed plugins
@@ -46,39 +51,47 @@ pnpm plugins:dev:check
 ```
 
 When the deployment changes, update the shared connector, both host-specific
-OAuth adapters, and skill dependency URLs explicitly:
+adapters, and skill dependency URLs explicitly:
 
 ```bash
 CONVEX_SITE_URL=https://your-deployment.convex.site \
-CLERK_MCP_OAUTH_CLIENT_ID=<public-client-id> \
 pnpm plugins:dev:sync
 pnpm format:check
 ```
 
-The shared `.mcp.json` files contain only the HTTP URL so each host can use its
-own standards-based OAuth discovery. The Codex manifests retain the public
-client ID in Codex's documented nested `oauth.clientId` shape and leave the
-resource to discovery, while the Claude adapters use Claude's documented
-`oauth.clientId` shape. The public
-`CLERK_MCP_OAUTH_CLIENT_ID` is safe to check in; no client secret or access
-token belongs in the repository. Supply a rotated public ID explicitly when
-synchronizing:
+From `causaic-cloud`, production metadata is synchronized from the ignored
+`apps/backend/.env.prod` file:
 
 ```bash
-CLERK_MCP_OAUTH_CLIENT_ID=<public-client-id> pnpm plugins:dev:sync
+pnpm plugins:prod:check
+pnpm plugins:prod:sync
 ```
+
+The shared, Codex, and Claude MCP definitions contain only the HTTP URL. Each
+host discovers the protected-resource and authorization-server metadata and
+uses Clerk-native DCR. No OAuth client ID, client secret, or access token
+belongs in the repository.
 
 After synchronization, update the installed plugin cache and start a new
 conversation.
 
 ## OAuth setup for Codex desktop
 
-Both plugins use the same Clerk public OAuth application and PKCE S256 flow,
-but each requests its own MCP resource:
+Each plugin pair uses Clerk-native DCR and an Authorization Code + PKCE S256
+flow. The dev and production pairs discover their deployment-specific MCP
+resources:
 
 ```text
 https://compassionate-swordfish-378.eu-west-1.convex.site/mcp/contributor
 https://compassionate-swordfish-378.eu-west-1.convex.site/mcp/operator
+```
+
+Production resources use `$CONVEX_SITE_URL` from
+`causaic-cloud/apps/backend/.env.prod`:
+
+```text
+$CONVEX_SITE_URL/mcp/contributor
+$CONVEX_SITE_URL/mcp/operator
 ```
 
 The protected-resource metadata URLs are:
@@ -88,15 +101,25 @@ https://compassionate-swordfish-378.eu-west-1.convex.site/.well-known/oauth-prot
 https://compassionate-swordfish-378.eu-west-1.convex.site/.well-known/oauth-protected-resource/mcp/operator
 ```
 
-In Clerk development settings:
+For the selected deployment, configure the corresponding Clerk instance with
+DCR enabled, JWT access tokens, Authorization Code + PKCE `S256`, `none` token
+endpoint authentication, mandatory consent, and default scopes
+`openid profile email`. Do not create a client secret or pre-register callback
+URLs; each DCR client registers its own exact redirect URI.
 
-1. Configure the shared public client ID stored in `CLERK_MCP_OAUTH_CLIENT_ID`.
-2. Enable Authorization Code + PKCE with `S256`.
-3. Keep Dynamic Client Registration disabled.
-4. Do not create or distribute a client secret.
-5. Start authentication from Codex desktop for each plugin and register the
-   exact callback URI shown by the OAuth flow. Callback matching is exact; do
-   not use a wildcard.
+After installing or updating the plugins, force Codex to use DCR:
+
+```bash
+codex mcp login causaic-contributor-dev --oauth-client-registration dcr
+codex mcp login causaic-operator-dev --oauth-client-registration dcr
+codex mcp login causaic-contributor --oauth-client-registration dcr
+codex mcp login causaic-operator --oauth-client-registration dcr
+```
+
+Roll out and test the development pair before running the production commands.
+Clerk shows a consent screen for each dynamic registration. The backend accepts
+only signed tokens from the deployment's exact issuer with a nonempty
+`client_id` and the `profile` scope.
 
 Authenticate the contributor plugin first and verify a harmless read such as
 `causes_list_discoverable`. Authenticate the operator plugin with the same
@@ -104,9 +127,9 @@ Clerk account and verify `causes_list_managed`. The same account may use both
 connections, but their tool catalogs must remain disjoint and backend
 membership remains authoritative.
 
-If the hosted deployment's site URL or public OAuth client changes, update the
-private deployment separately, run the synchronization command above, reinstall
-the plugins, and begin a new conversation.
+If a deployment's site URL or Clerk issuer changes, update that Convex
+deployment's OAuth metadata, run the matching synchronization command,
+reinstall the affected plugins, and begin a new conversation.
 
 ## Skill behavior
 

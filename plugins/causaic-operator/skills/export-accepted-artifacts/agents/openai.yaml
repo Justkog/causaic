@@ -1,0 +1,11 @@
+interface:
+  display_name: 'Export accepted Causaic artifacts'
+  short_description: 'List or export accepted Causaic artifacts.'
+  default_prompt: 'Use $export-accepted-artifacts to list or safely export accepted Causaic artifacts.'
+dependencies:
+  tools:
+    - type: 'mcp'
+      value: 'causaic-operator'
+      description: 'Causaic operator MCP server'
+      transport: 'streamable_http'
+      url: 'https://befitting-chickadee-185.convex.site/mcp/operator'

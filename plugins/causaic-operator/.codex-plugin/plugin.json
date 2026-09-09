@@ -1,0 +1,24 @@
+{
+  "name": "causaic-operator",
+  "version": "0.1.0+codex.20260909111626",
+  "description": "Causaic operator tools for visibility, invitations, publication, work management, artifact validation, and accepted-artifact exports.",
+  "author": {
+    "name": "Causaic"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Causaic Operator",
+    "shortDescription": "Manage causes, invitations, work, and exports.",
+    "longDescription": "Connects Codex to the Causaic operator MCP and provides guided cause visibility, email invitations, workflow, campaign, workstream, job-management, artifact-validation, and accepted-artifact export skills.",
+    "developerName": "Causaic",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Use the Causaic operator tools to publish, operate, review, or export work."
+  },
+  "mcpServers": {
+    "causaic-operator": {
+      "type": "http",
+      "url": "https://befitting-chickadee-185.convex.site/mcp/operator"
+    }
+  }
+}

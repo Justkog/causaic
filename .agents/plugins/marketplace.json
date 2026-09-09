@@ -27,6 +27,30 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Productivity"
+    },
+    {
+      "name": "causaic-contributor",
+      "source": {
+        "source": "local",
+        "path": "./plugins/causaic-contributor"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "causaic-operator",
+      "source": {
+        "source": "local",
+        "path": "./plugins/causaic-operator"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
     }
   ]
 }

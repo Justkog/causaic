@@ -8,34 +8,38 @@ const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
 );
+const productionMode = process.argv.includes('--prod');
+const pluginSuffix = productionMode ? '' : '-dev';
+const contributorPluginName = `causaic-contributor${pluginSuffix}`;
+const operatorPluginName = `causaic-operator${pluginSuffix}`;
 const writeMode = process.argv.includes('--write');
 const contributorConfigPath = path.join(
   repositoryRoot,
-  'plugins/causaic-contributor-dev/.mcp.json',
+  `plugins/${contributorPluginName}/.mcp.json`,
 );
 const operatorConfigPath = path.join(
   repositoryRoot,
-  'plugins/causaic-operator-dev/.mcp.json',
+  `plugins/${operatorPluginName}/.mcp.json`,
 );
 const contributorCodexManifestPath = path.join(
   repositoryRoot,
-  'plugins/causaic-contributor-dev/.codex-plugin/plugin.json',
+  `plugins/${contributorPluginName}/.codex-plugin/plugin.json`,
 );
 const operatorCodexManifestPath = path.join(
   repositoryRoot,
-  'plugins/causaic-operator-dev/.codex-plugin/plugin.json',
+  `plugins/${operatorPluginName}/.codex-plugin/plugin.json`,
 );
 const contributorClaudeConfigPath = path.join(
   repositoryRoot,
-  'plugins/causaic-contributor-dev/.claude-plugin/mcp.json',
+  `plugins/${contributorPluginName}/.claude-plugin/mcp.json`,
 );
 const operatorClaudeConfigPath = path.join(
   repositoryRoot,
-  'plugins/causaic-operator-dev/.claude-plugin/mcp.json',
+  `plugins/${operatorPluginName}/.claude-plugin/mcp.json`,
 );
 const skillRoots = [
-  path.join(repositoryRoot, 'plugins/causaic-contributor-dev/skills'),
-  path.join(repositoryRoot, 'plugins/causaic-operator-dev/skills'),
+  path.join(repositoryRoot, `plugins/${contributorPluginName}/skills`),
+  path.join(repositoryRoot, `plugins/${operatorPluginName}/skills`),
 ];
 
 function normalizedSiteUrl(value) {
@@ -50,43 +54,17 @@ async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, 'utf8'));
 }
 
-function expectedServers(siteUrl, clientId) {
+function expectedServers(siteUrl) {
   const contributorUrl = `${siteUrl}/mcp/contributor`;
   const operatorUrl = `${siteUrl}/mcp/operator`;
   return {
-    shared: {
-      contributor: {
-        type: 'http',
-        url: contributorUrl,
-      },
-      operator: {
-        type: 'http',
-        url: operatorUrl,
-      },
+    contributor: {
+      type: 'http',
+      url: contributorUrl,
     },
-    codex: {
-      contributor: {
-        type: 'http',
-        url: contributorUrl,
-        oauth: { clientId },
-      },
-      operator: {
-        type: 'http',
-        url: operatorUrl,
-        oauth: { clientId },
-      },
-    },
-    claude: {
-      contributor: {
-        type: 'http',
-        url: contributorUrl,
-        oauth: { clientId },
-      },
-      operator: {
-        type: 'http',
-        url: operatorUrl,
-        oauth: { clientId },
-      },
+    operator: {
+      type: 'http',
+      url: operatorUrl,
     },
   };
 }
@@ -110,35 +88,18 @@ function expectedSharedConfig(serverName, server) {
   };
 }
 
-/*
- * Host-specific OAuth fields stay in the host adapter. The shared connector
- * only carries the HTTP URL so hosts can perform their own standards-based
- * discovery.
- */
-function expectedHostConfigs(siteUrl, clientId) {
-  const servers = expectedServers(siteUrl, clientId);
+function expectedHostConfigs(siteUrl) {
+  const servers = expectedServers(siteUrl);
   return {
     contributor: {
-      shared: expectedSharedConfig(
-        'causaic-contributor-dev',
-        servers.shared.contributor,
-      ),
-      codex: servers.codex.contributor,
-      claude: expectedClaudeConfig(
-        'causaic-contributor-dev',
-        servers.claude.contributor,
-      ),
+      shared: expectedSharedConfig(contributorPluginName, servers.contributor),
+      codex: servers.contributor,
+      claude: expectedClaudeConfig(contributorPluginName, servers.contributor),
     },
     operator: {
-      shared: expectedSharedConfig(
-        'causaic-operator-dev',
-        servers.shared.operator,
-      ),
-      codex: servers.codex.operator,
-      claude: expectedClaudeConfig(
-        'causaic-operator-dev',
-        servers.claude.operator,
-      ),
+      shared: expectedSharedConfig(operatorPluginName, servers.operator),
+      codex: servers.operator,
+      claude: expectedClaudeConfig(operatorPluginName, servers.operator),
     },
   };
 }
@@ -156,11 +117,8 @@ const contributorCodexManifest = await readJson(contributorCodexManifestPath);
 const operatorCodexManifest = await readJson(operatorCodexManifestPath);
 const contributorClaudeConfig = await readJson(contributorClaudeConfigPath);
 const operatorClaudeConfig = await readJson(operatorClaudeConfigPath);
-const checkedInClientId =
-  contributorCodexManifest?.mcpServers?.['causaic-contributor-dev']
-    ?.oauth?.clientId;
 const checkedInSiteUrl = contributorCodexManifest?.mcpServers?.[
-  'causaic-contributor-dev'
+  contributorPluginName
 ]?.url?.replace(/\/mcp\/contributor$/u, '');
 const rawSiteUrl = process.env.CONVEX_SITE_URL ?? checkedInSiteUrl;
 if (!rawSiteUrl) {
@@ -172,23 +130,17 @@ if (writeMode && process.env.CONVEX_SITE_URL === undefined) {
   throw new Error('CONVEX_SITE_URL is required when writing plugin endpoints');
 }
 const siteUrl = normalizedSiteUrl(rawSiteUrl);
-const clientId = process.env.CLERK_MCP_OAUTH_CLIENT_ID ?? checkedInClientId;
-if (!clientId)
-  throw new Error(
-    'CLERK_MCP_OAUTH_CLIENT_ID is required when no client ID is checked in',
-  );
-
-const configs = expectedHostConfigs(siteUrl, clientId);
+const configs = expectedHostConfigs(siteUrl);
 const contributor = configs.contributor.shared;
 const operator = configs.operator.shared;
 const contributorCodex = expectedCodexManifest(
   contributorCodexManifest,
-  'causaic-contributor-dev',
+  contributorPluginName,
   configs.contributor.codex,
 );
 const operatorCodex = expectedCodexManifest(
   operatorCodexManifest,
-  'causaic-operator-dev',
+  operatorPluginName,
   configs.operator.codex,
 );
 const contributorClaude = configs.contributor.claude;
@@ -230,37 +182,39 @@ if (writeMode) {
       if (updated !== contents) await writeFile(yamlPath, updated);
     }
   }
-  console.log(`Updated Causaic dev plugin URLs for ${siteUrl}`);
+  console.log(
+    `Updated Causaic ${productionMode ? 'production' : 'development'} plugin URLs for ${siteUrl}`,
+  );
 } else {
   assertServer(
     contributorConfig,
-    configs.contributor.shared.mcpServers['causaic-contributor-dev'],
-    'causaic-contributor-dev',
+    configs.contributor.shared.mcpServers[contributorPluginName],
+    contributorPluginName,
   );
   assertServer(
     operatorConfig,
-    configs.operator.shared.mcpServers['causaic-operator-dev'],
-    'causaic-operator-dev',
+    configs.operator.shared.mcpServers[operatorPluginName],
+    operatorPluginName,
   );
   assertServer(
     contributorCodexManifest,
     configs.contributor.codex,
-    'causaic-contributor-dev',
+    contributorPluginName,
   );
   assertServer(
     operatorCodexManifest,
     configs.operator.codex,
-    'causaic-operator-dev',
+    operatorPluginName,
   );
   assertServer(
     contributorClaudeConfig,
-    configs.contributor.claude.mcpServers['causaic-contributor-dev'],
-    'causaic-contributor-dev',
+    configs.contributor.claude.mcpServers[contributorPluginName],
+    contributorPluginName,
   );
   assertServer(
     operatorClaudeConfig,
-    configs.operator.claude.mcpServers['causaic-operator-dev'],
-    'causaic-operator-dev',
+    configs.operator.claude.mcpServers[operatorPluginName],
+    operatorPluginName,
   );
   for (const root of skillRoots) {
     const entries = await readdir(root, { withFileTypes: true });
@@ -277,5 +231,7 @@ if (writeMode) {
       }
     }
   }
-  console.log(`Causaic dev plugin URLs match ${siteUrl}`);
+  console.log(
+    `Causaic ${productionMode ? 'production' : 'development'} plugin URLs match ${siteUrl}`,
+  );
 }
