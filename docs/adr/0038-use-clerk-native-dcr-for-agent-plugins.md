@@ -1,36 +1,34 @@
-# ADR 0038: Use Clerk-native DCR for agent plugins
+# ADR 0038: Use Clerk-native DCR for public agent plugins
 
 - Status: accepted
 - Date: 2026-09-09
-- Supersedes: the host-specific client-ID decisions in ADR 0030 and ADR 0037
 
 ## Context
 
-Causaic's development and production plugins must be installable by multiple AI
-clients without distributing one shared OAuth client ID or manually registering
-each host's loopback callback. Both Clerk instances expose Dynamic Client
-Registration through authorization-server metadata.
+Causaic's public contributor and operator plugins must be installable by
+multiple AI clients without distributing one shared OAuth client ID or
+manually registering each host's loopback callback. The production Clerk
+authorization server exposes Dynamic Client Registration through its metadata.
 
 ## Decision
 
-Generate URL-only MCP definitions for the shared, Codex, and Claude adapters in
-all four plugins. Do not include `oauth.clientId`, `oauth_client_id`,
-`oauth_resource`, client secrets, or access tokens. Each host discovers the MCP
-protected resource and Clerk authorization server, then registers its own
-public OAuth client through Clerk-native DCR.
+Generate URL-only MCP definitions for the shared, Codex, and Claude adapters.
+Do not include `oauth.clientId`, `oauth_client_id`, `oauth_resource`, client
+secrets, or access tokens. Each host discovers the MCP protected resource and
+Clerk authorization server, then registers its own public OAuth client through
+Clerk-native DCR.
 
-Marketplace validation rejects pinned OAuth client and resource fields. Plugin
-synchronization requires only the deployment's Convex site URL. Codex release
-testing explicitly forces DCR with `--oauth-client-registration dcr` because a
-configured client ID would bypass dynamic registration.
+The public repository contains self-contained production plugin directories and
+both host marketplace manifests. Marketplace validation rejects pinned OAuth
+and resource fields and requires exactly the public contributor and operator
+plugins.
 
 ## Consequences
 
-- Plugin installation no longer requires per-client callback or OAuth client
-  configuration.
+- Plugin installation requires no per-client callback or OAuth client setup.
 - Every host connection gets a distinct Clerk client ID and mandatory consent
   screen.
-- Development and production plugin pairs continue to coexist and retain their
-  deployment-specific URLs.
-- Codex is the runtime release gate. Claude manifests are validated
-  structurally; other client runtime tests remain follow-up compatibility work.
+- Each plugin keeps its shared `.mcp.json`, `skills/` tree, skill metadata, and
+  thin host adapters together so hosts can cache or copy it independently.
+- Codex is the runtime release gate; Claude manifests are validated
+  structurally until Claude Code is available for runtime testing.

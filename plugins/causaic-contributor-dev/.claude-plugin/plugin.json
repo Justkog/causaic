@@ -1,9 +1,0 @@
-{
-  "name": "causaic-contributor-dev",
-  "version": "0.1.0",
-  "description": "Development-only Causaic contributor tools, invitation access, and guided job execution workflows.",
-  "author": {
-    "name": "Causaic"
-  },
-  "mcpServers": "./.claude-plugin/mcp.json"
-}

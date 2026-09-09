@@ -13,12 +13,8 @@ const marketplacePaths = {
   codex: path.join(repositoryRoot, '.agents/plugins/marketplace.json'),
   claude: path.join(repositoryRoot, '.claude-plugin/marketplace.json'),
 };
-const allowedPluginSet = new Set([
-  'causaic-contributor-dev',
-  'causaic-operator-dev',
-  'causaic-contributor',
-  'causaic-operator',
-]);
+const productionSiteUrl = 'https://befitting-chickadee-185.convex.site';
+const allowedPluginSet = new Set(['causaic-contributor', 'causaic-operator']);
 
 function fail(message) {
   throw new Error(message);
@@ -94,16 +90,33 @@ async function assertNoSymlinks(directory) {
         `plugin contains an external symlink: ${path.relative(repositoryRoot, entryPath)}`,
       );
     }
-    if (entry.isDirectory()) await assertNoSymlinks(entryPath);
+    if (entry.isDirectory()) {
+      await assertNoSymlinks(entryPath);
+    } else {
+      if (entry.name.startsWith('.env')) {
+        fail(
+          `plugin contains an environment file: ${path.relative(repositoryRoot, entryPath)}`,
+        );
+      }
+      const contents = await readFile(entryPath, 'utf8');
+      if (/-dev(?:["'\/\s]|$)/u.test(contents)) {
+        fail(
+          `public plugin contains a development plugin reference: ${path.relative(repositoryRoot, entryPath)}`,
+        );
+      }
+    }
   }
 }
 
-function assertDiscoveredMcpServers(servers, label) {
+function assertDiscoveredMcpServers(servers, label, expectedUrl) {
   assertObject(servers, `${label} MCP servers`);
   for (const [serverName, config] of Object.entries(servers)) {
     assertObject(config, `${label} MCP server ${serverName}`);
     if (config?.type !== 'http' || typeof config.url !== 'string') {
       fail(`${label} MCP server ${serverName} must use an HTTP URL`);
+    }
+    if (config.url !== expectedUrl) {
+      fail(`${label} MCP server ${serverName} must use ${expectedUrl}`);
     }
     if (
       'oauth' in config ||
@@ -148,6 +161,8 @@ async function validatePlugin(name, source) {
   const claudeManifest = await readJson(claudeManifestPath);
   const sharedMcp = await readJson(sharedMcpPath);
   const claudeMcp = await readJson(claudeMcpPath);
+  const endpoint = name.includes('operator') ? 'operator' : 'contributor';
+  const expectedUrl = `${productionSiteUrl}/mcp/${endpoint}`;
   if (codexManifest.name !== name || claudeManifest.name !== name) {
     fail(`${name} host manifests must use the marketplace plugin name`);
   }
@@ -162,9 +177,21 @@ async function validatePlugin(name, source) {
     fail(`${name} Claude manifest must point to its host MCP adapter`);
   }
 
-  assertDiscoveredMcpServers(sharedMcp.mcpServers, `${name} shared`);
-  assertDiscoveredMcpServers(codexManifest.mcpServers, `${name} Codex`);
-  assertDiscoveredMcpServers(claudeMcp.mcpServers, `${name} Claude`);
+  assertDiscoveredMcpServers(
+    sharedMcp.mcpServers,
+    `${name} shared`,
+    expectedUrl,
+  );
+  assertDiscoveredMcpServers(
+    codexManifest.mcpServers,
+    `${name} Codex`,
+    expectedUrl,
+  );
+  assertDiscoveredMcpServers(
+    claudeMcp.mcpServers,
+    `${name} Claude`,
+    expectedUrl,
+  );
   await assertNoSymlinks(resolved);
 }
 
@@ -193,9 +220,15 @@ if (
   codexNames.length !== allowedPluginSet.size ||
   codexNames.some((name) => !allowedPluginSet.has(name))
 ) {
-  fail(
-    'marketplaces must list the complete development and production plugin sets',
-  );
+  fail('public marketplaces must list exactly the production plugin set');
+}
+
+const pluginDirectories = (await readdir(pluginRoot, { withFileTypes: true }))
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .sort();
+if (JSON.stringify(pluginDirectories) !== JSON.stringify(codexNames)) {
+  fail('public plugins directory must contain exactly the marketplace plugins');
 }
 
 console.log(`Plugin marketplace validation passed: ${codexNames.join(', ')}`);

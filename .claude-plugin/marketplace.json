@@ -3,32 +3,12 @@
   "owner": {
     "name": "Causaic"
   },
-  "description": "Causaic contributor and operator plugins for development and production.",
+  "description": "Causaic contributor and operator plugins.",
   "plugins": [
-    {
-      "name": "causaic-contributor-dev",
-      "source": "./plugins/causaic-contributor-dev",
-      "description": "Development-only Causaic contributor tools, invitation access, and guided job execution workflows.",
-      "version": "0.1.0",
-      "author": {
-        "name": "Causaic"
-      },
-      "category": "Productivity"
-    },
-    {
-      "name": "causaic-operator-dev",
-      "source": "./plugins/causaic-operator-dev",
-      "description": "Development-only Causaic operator tools for visibility, invitations, publication, work management, artifact validation, and accepted-artifact exports.",
-      "version": "0.1.0",
-      "author": {
-        "name": "Causaic"
-      },
-      "category": "Productivity"
-    },
     {
       "name": "causaic-contributor",
       "source": "./plugins/causaic-contributor",
-      "description": "Causaic contributor tools, invitation access, and guided job execution workflows.",
+      "description": "Causaic contributor tools.",
       "version": "0.1.0",
       "author": {
         "name": "Causaic"
@@ -38,7 +18,7 @@
     {
       "name": "causaic-operator",
       "source": "./plugins/causaic-operator",
-      "description": "Causaic operator tools for visibility, invitations, publication, work management, artifact validation, and accepted-artifact exports.",
+      "description": "Causaic operator tools.",
       "version": "0.1.0",
       "author": {
         "name": "Causaic"
