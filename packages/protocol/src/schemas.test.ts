@@ -4,6 +4,7 @@ import {
   ApprovalDecisionSchema,
   ApprovalRequestSchema,
   ArtifactManifestSchema,
+  ArtifactAttachmentSchema,
   CampaignSchema,
   ClaimOpportunityRequestSchema,
   ClaimedContributionSchema,
@@ -20,6 +21,8 @@ import {
   validApprovalDecisionFixture,
   validApprovalRequestFixture,
   validArtifactManifestFixture,
+  validArtifactAttachmentFixture,
+  validArtifactManifestWithAttachmentsFixture,
   validCampaignFixture,
   validClaimedContributionFixture,
   validContributionOpportunitySummaryFixture,
@@ -106,6 +109,58 @@ describe('protocol version 1 schemas', () => {
         approvalType: 'network_access',
       }).success,
     ).toBe(true);
+  });
+
+  it('adds bounded attachments without changing JSON-only artifacts', () => {
+    expect(
+      ArtifactManifestSchema.parse(validArtifactManifestFixture),
+    ).not.toHaveProperty('attachments');
+    expect(
+      ProtocolMessageSchema.parse(validArtifactManifestWithAttachmentsFixture),
+    ).toMatchObject({ attachments: [validArtifactAttachmentFixture] });
+    expect(
+      ArtifactAttachmentSchema.safeParse({
+        ...validArtifactAttachmentFixture,
+        filename: '../source-video.mp4',
+      }).success,
+    ).toBe(false);
+    expect(
+      ArtifactAttachmentSchema.safeParse({
+        ...validArtifactAttachmentFixture,
+        filename: 'source\u0085video.mp4',
+      }).success,
+    ).toBe(false);
+    expect(
+      ArtifactAttachmentSchema.safeParse({
+        ...validArtifactAttachmentFixture,
+        mediaType: 'video/mp4; charset=utf-8',
+      }).success,
+    ).toBe(false);
+    expect(
+      ArtifactManifestSchema.safeParse({
+        ...validArtifactManifestWithAttachmentsFixture,
+        attachments: [
+          validArtifactAttachmentFixture,
+          validArtifactAttachmentFixture,
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      ArtifactManifestSchema.safeParse({
+        ...validArtifactManifestWithAttachmentsFixture,
+        attachments: [
+          {
+            ...validArtifactAttachmentFixture,
+            byteSize: 60 * 1024 * 1024,
+          },
+          {
+            ...validArtifactAttachmentFixture,
+            id: 'artifact_upload_source-video-2',
+            byteSize: 60 * 1024 * 1024,
+          },
+        ],
+      }).success,
+    ).toBe(false);
   });
 
   it('keeps opportunity discovery source-neutral and separates detail input', () => {
@@ -220,6 +275,7 @@ describe('protocol version 1 schemas', () => {
       validApprovalRequestFixture,
       validApprovalDecisionFixture,
       validArtifactManifestFixture,
+      validArtifactManifestWithAttachmentsFixture,
       validCompletionEventFixture,
       validFailureEventFixture,
     ]) {

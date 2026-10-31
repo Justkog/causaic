@@ -16,6 +16,7 @@ import type {
   WorkflowReferenceSchema,
 } from './schemas.js';
 import { ExecutableWorkflowDefinitionSchema } from './agent-task.js';
+import type { ArtifactAttachmentSchema } from './artifact-attachments.js';
 import type { WorkflowVersionDetailSchema } from './workflow-catalog.js';
 
 const fixtureTaskContent = {
@@ -343,6 +344,22 @@ export const validArtifactManifestFixture = {
   createdAt: '2026-07-15T12:06:00Z',
 } satisfies z.input<typeof ArtifactManifestSchema>;
 
+export const validArtifactAttachmentFixture = {
+  id: 'artifact_upload_source-video-1',
+  filename: 'source-video.mp4',
+  mediaType: 'video/mp4',
+  byteSize: 1_024,
+  sha256:
+    'sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789',
+} satisfies z.input<typeof ArtifactAttachmentSchema>;
+
+export const validArtifactManifestWithAttachmentsFixture = {
+  ...validArtifactManifestFixture,
+  messageId: 'message_artifact-with-attachments-1',
+  id: 'artifact_source-verification-with-attachments-1',
+  attachments: [validArtifactAttachmentFixture],
+} satisfies z.input<typeof ArtifactManifestSchema>;
+
 export const validCompletionEventFixture = {
   protocolVersion: 1,
   messageType: 'job.progress',
@@ -414,5 +431,10 @@ export const invalidProtocolFixtures: ReadonlyArray<{
     name: 'invalid artifact content hash',
     schema: ArtifactManifestSchema,
     value: { ...validArtifactManifestFixture, contentHash: 'not-a-hash' },
+  },
+  {
+    name: 'artifact with an empty attachment list',
+    schema: ArtifactManifestSchema,
+    value: { ...validArtifactManifestFixture, attachments: [] },
   },
 ];

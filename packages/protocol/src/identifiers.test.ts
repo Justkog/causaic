@@ -4,6 +4,7 @@ import {
   ArtifactDecisionIdSchema,
   ArtifactExportIdSchema,
   ArtifactIdSchema,
+  ArtifactUploadIdSchema,
   CauseIdSchema,
   CauseInvitationIdSchema,
   GenerationInputIdSchema,
@@ -22,6 +23,15 @@ describe('portable identifiers', () => {
       ArtifactExportIdSchema.safeParse('artifact_export_fixture-1').success,
     ).toBe(true);
     expect(ArtifactExportIdSchema.safeParse('artifact_fixture-1').success).toBe(
+      false,
+    );
+  });
+
+  it('validates artifact upload identifiers', () => {
+    expect(
+      ArtifactUploadIdSchema.safeParse('artifact_upload_fixture-1').success,
+    ).toBe(true);
+    expect(ArtifactUploadIdSchema.safeParse('artifact_fixture-1').success).toBe(
       false,
     );
   });
@@ -66,6 +76,9 @@ describe('portable identifiers', () => {
       ArtifactIdSchema.safeParse('artifact_decision_fixture').success,
     ).toBe(false);
     expect(ArtifactIdSchema.safeParse('artifact_export_fixture').success).toBe(
+      false,
+    );
+    expect(ArtifactIdSchema.safeParse('artifact_upload_fixture').success).toBe(
       false,
     );
   });

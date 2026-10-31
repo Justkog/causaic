@@ -23,6 +23,7 @@ import {
   JobPrioritySchema,
 } from './job-management.js';
 import { WorkflowVersionRequirementsSchema } from './agent-task.js';
+import { ArtifactAttachmentsSchema } from './artifact-attachments.js';
 import { JsonValueSchema, Sha256Schema } from './workflow-data.js';
 
 export { CapacityClassSchema, ExecutorTypeSchema } from './job-management.js';
@@ -426,6 +427,7 @@ export const ArtifactManifestSchema = VersionedObjectSchema.extend({
   mediaType: z.literal('application/json'),
   contentHash: Sha256Schema,
   content: JsonValueSchema,
+  attachments: ArtifactAttachmentsSchema.optional(),
   createdAt: TimestampSchema,
 }).strict();
 export type ArtifactManifest = z.infer<typeof ArtifactManifestSchema>;

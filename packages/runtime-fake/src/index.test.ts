@@ -1,5 +1,6 @@
 import {
   ApprovalIdSchema,
+  ArtifactAttachmentSchema,
   ArtifactIdSchema,
   RunIdSchema,
   ValidationRunIdSchema,
@@ -7,6 +8,7 @@ import {
   JobIdSchema,
   validSourceVerificationJobFixture,
   validExecutableWorkflowDefinitionFixture,
+  validArtifactAttachmentFixture,
 } from '@causaic/protocol';
 import {
   RuntimeAdapterError,
@@ -90,6 +92,9 @@ describe('FakeRuntimeAdapter', () => {
     const definition = validExecutableWorkflowDefinitionFixture;
     if (definition.validation === undefined)
       throw new Error('Fixture validation definition is missing');
+    const attachment = ArtifactAttachmentSchema.parse(
+      validArtifactAttachmentFixture,
+    );
     const context: ValidationRuntimeSessionContext = {
       sessionId: RuntimeSessionIdSchema.parse(
         'runtime-session_validation-test',
@@ -121,11 +126,13 @@ describe('FakeRuntimeAdapter', () => {
           },
           contentHash:
             'sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+          attachments: [attachment],
         },
         parameters: {},
       },
     };
     const session = await runtime.prepareValidationSession(context);
+    expect(session.input.artifact.attachments).toEqual([attachment]);
     const stream = runtime.executeValidation(
       session,
       new AbortController().signal,

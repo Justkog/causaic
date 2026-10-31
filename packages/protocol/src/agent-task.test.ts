@@ -9,6 +9,7 @@ import {
   ValidationRunOriginSchema,
   parseWorkflowValidationResult,
   validExecutableWorkflowDefinitionFixture,
+  validArtifactAttachmentFixture,
 } from './index.js';
 
 const validResult = {
@@ -188,6 +189,7 @@ describe('workflow validation contracts', () => {
           id: 'artifact_issue-codes',
           content: {},
           contentHash: `sha256:${'b'.repeat(64)}`,
+          attachments: [validArtifactAttachmentFixture],
         },
         parameters: null,
       },
@@ -201,6 +203,9 @@ describe('workflow validation contracts', () => {
     expect(session.detailsSchema?.descriptor.id).toBe(
       'workflow_schema_validation-details',
     );
+    expect(session.input.artifact.attachments).toEqual([
+      validArtifactAttachmentFixture,
+    ]);
   });
 
   it('keeps the exact consent proposal self-contained', () => {

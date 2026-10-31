@@ -1,4 +1,5 @@
 export * from './coordinator-errors.js';
+export * from './artifact-attachments.js';
 export * from './agent-task.js';
 export * from './campaign-workstreams.js';
 export * from './job-management.js';

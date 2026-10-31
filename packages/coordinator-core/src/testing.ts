@@ -257,7 +257,7 @@ export function defineJobCoordinatorContract(
           artifactId,
         }),
       ).rejects.toMatchObject({ code: 'artifact_rejected' });
-      await harness.coordinator.submitArtifact({
+      const submittedArtifact = await harness.coordinator.submitArtifact({
         jobId: contribution.job.id,
         leaseId: lease.id,
         runId: lease.runId,
@@ -265,6 +265,7 @@ export function defineJobCoordinatorContract(
         contentHash: await sha256Json(harness.artifact),
         content: harness.artifact,
       });
+      expect(submittedArtifact).not.toHaveProperty('attachments');
       await expect(
         harness.coordinator.completeRun({
           jobId: contribution.job.id,

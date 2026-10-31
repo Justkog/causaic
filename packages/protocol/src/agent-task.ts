@@ -17,6 +17,7 @@ import {
   WorkflowSchemaDescriptorSchema,
   WorkflowSchemaDocumentSchema,
 } from './workflow-data.js';
+import { ArtifactAttachmentsSchema } from './artifact-attachments.js';
 
 const MarkdownSchema = z.string().trim().min(1).max(20_000);
 const ShortMarkdownSchema = z.string().trim().min(1).max(2_000);
@@ -359,6 +360,7 @@ export const WorkflowValidationInputSchema = z
         id: ArtifactIdSchema,
         content: JsonValueSchema,
         contentHash: Sha256Schema,
+        attachments: ArtifactAttachmentsSchema.optional(),
       })
       .strict(),
     parameters: JsonValueSchema.nullable(),

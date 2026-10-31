@@ -103,6 +103,7 @@ export type ApprovalId = z.infer<typeof ApprovalIdSchema>;
 export const ArtifactIdSchema = opaqueId('artifact', 'ArtifactId', [
   'artifact_decision',
   'artifact_export',
+  'artifact_upload',
 ]);
 export type ArtifactId = z.infer<typeof ArtifactIdSchema>;
 
@@ -117,6 +118,12 @@ export const ArtifactExportIdSchema = opaqueId(
   'ArtifactExportId',
 );
 export type ArtifactExportId = z.infer<typeof ArtifactExportIdSchema>;
+
+export const ArtifactUploadIdSchema = opaqueId(
+  'artifact_upload',
+  'ArtifactUploadId',
+);
+export type ArtifactUploadId = z.infer<typeof ArtifactUploadIdSchema>;
 
 export const ValidationRunIdSchema = opaqueId(
   'validation_run',
