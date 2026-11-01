@@ -4,4 +4,6 @@ out/
 coverage/
 .turbo/
 *.tsbuildinfo
-.env.local
+.env
+.env.*
+!.env.example
