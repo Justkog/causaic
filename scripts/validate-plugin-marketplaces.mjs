@@ -3,18 +3,30 @@
 import { lstat, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
+import Ajv2020 from 'ajv/dist/2020.js';
+import { parse as parseYaml } from 'yaml';
 
 const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
 );
-const pluginRoot = path.join(repositoryRoot, 'plugins');
-const marketplacePaths = {
-  codex: path.join(repositoryRoot, '.agents/plugins/marketplace.json'),
-  claude: path.join(repositoryRoot, '.claude-plugin/marketplace.json'),
-};
 const productionSiteUrl = 'https://befitting-chickadee-185.convex.site';
 const allowedPluginSet = new Set(['causaic-contributor', 'causaic-operator']);
+const ajv = new Ajv2020({ allErrors: true });
+const portableSchemas = {};
+for (const component of ['plugin', 'mcp']) {
+  const schema = JSON.parse(
+    await readFile(
+      new URL(
+        `./schemas/agent-plugins/1.0.0/${component}.schema.json`,
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+  );
+  portableSchemas[component] = ajv.compile(schema);
+}
 
 function fail(message) {
   throw new Error(message);
@@ -108,28 +120,123 @@ async function assertNoSymlinks(directory) {
   }
 }
 
-function assertDiscoveredMcpServers(servers, label, expectedUrl) {
+function assertDiscoveredMcpServers(
+  servers,
+  label,
+  expectedUrl,
+  name,
+  type = 'http',
+) {
   assertObject(servers, `${label} MCP servers`);
+  if (Object.keys(servers).length !== 1 || !Object.hasOwn(servers, name)) {
+    fail(`${label} must contain exactly the ${name} MCP server`);
+  }
   for (const [serverName, config] of Object.entries(servers)) {
     assertObject(config, `${label} MCP server ${serverName}`);
-    if (config?.type !== 'http' || typeof config.url !== 'string') {
-      fail(`${label} MCP server ${serverName} must use an HTTP URL`);
+    if (config.type !== type || typeof config.url !== 'string') {
+      fail(`${label} MCP server ${serverName} must use ${type}`);
     }
     if (config.url !== expectedUrl) {
       fail(`${label} MCP server ${serverName} must use ${expectedUrl}`);
     }
-    if (
-      'oauth' in config ||
-      'oauth_client_id' in config ||
-      'oauth_resource' in config
-    ) {
-      fail(`${label} MCP server ${serverName} must use OAuth discovery`);
+    if (Object.keys(config).some((key) => !['type', 'url'].includes(key))) {
+      fail(
+        `${label} MCP server ${serverName} must contain only type and url for OAuth discovery`,
+      );
     }
   }
 }
 
-async function validatePlugin(name, source) {
-  const resolved = path.resolve(repositoryRoot, source);
+async function validateSkills(directory, name, expectedUrl) {
+  const skillRoot = path.join(directory, 'skills');
+  const skills = [];
+  for (const entry of await readdir(skillRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const label = `${name} skill ${entry.name}`;
+    const contents = await readFile(
+      path.join(skillRoot, entry.name, 'SKILL.md'),
+      'utf8',
+    );
+    const match = contents.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
+    if (!match) fail(`${label} must have YAML frontmatter`);
+    let frontmatter;
+    try {
+      frontmatter = parseYaml(match[1], { maxAliasCount: 0 });
+    } catch {
+      fail(`${label} has invalid YAML frontmatter`);
+    }
+    assertObject(frontmatter, `${label} frontmatter`);
+    if (
+      frontmatter.name !== entry.name ||
+      entry.name.length > 64 ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(entry.name)
+    ) {
+      fail(
+        `${label} name must match its directory and Agent Skills constraints`,
+      );
+    }
+    if (
+      typeof frontmatter.description !== 'string' ||
+      !frontmatter.description.trim() ||
+      frontmatter.description.length > 1024
+    ) {
+      fail(`${label} description must contain 1 to 1024 characters`);
+    }
+    if ('license' in frontmatter && typeof frontmatter.license !== 'string') {
+      fail(`${label} license must be a string`);
+    }
+    if (
+      'compatibility' in frontmatter &&
+      (typeof frontmatter.compatibility !== 'string' ||
+        !frontmatter.compatibility.trim() ||
+        frontmatter.compatibility.length > 500)
+    ) {
+      fail(`${label} compatibility must contain 1 to 500 characters`);
+    }
+    if ('metadata' in frontmatter) {
+      assertObject(frontmatter.metadata, `${label} metadata`);
+      if (
+        Object.values(frontmatter.metadata).some(
+          (value) => typeof value !== 'string',
+        )
+      ) {
+        fail(`${label} metadata must map strings to strings`);
+      }
+    }
+    if (
+      'allowed-tools' in frontmatter &&
+      typeof frontmatter['allowed-tools'] !== 'string'
+    ) {
+      fail(`${label} allowed-tools must be a string`);
+    }
+    const openai = parseYaml(
+      await readFile(
+        path.join(skillRoot, entry.name, 'agents/openai.yaml'),
+        'utf8',
+      ),
+    );
+    const tools = openai?.dependencies?.tools;
+    if (
+      !Array.isArray(tools) ||
+      tools.length !== 1 ||
+      tools[0]?.type !== 'mcp' ||
+      tools[0].value !== name ||
+      tools[0].transport !== 'streamable_http' ||
+      tools[0].url !== expectedUrl
+    ) {
+      fail(
+        `${label} Codex dependency must match its MCP server name, transport, and endpoint`,
+      );
+    }
+    skills.push(entry.name);
+  }
+  if (!skills.length) fail(`${name} must contain discoverable skills`);
+  return skills.sort();
+}
+
+async function validatePlugin(name, source, root) {
+  const pluginRoot = path.join(root, 'plugins');
+  const resolved = path.resolve(root, source);
   const relativeToPlugins = path.relative(pluginRoot, resolved);
   if (
     !relativeToPlugins ||
@@ -143,11 +250,15 @@ async function validatePlugin(name, source) {
   const claudeManifestPath = path.join(resolved, '.claude-plugin/plugin.json');
   const sharedMcpPath = path.join(resolved, '.mcp.json');
   const claudeMcpPath = path.join(resolved, '.claude-plugin/mcp.json');
+  const portableManifestPath = path.join(resolved, 'plugin.json');
+  const portableMcpPath = path.join(resolved, 'mcp.json');
   for (const requiredPath of [
     codexManifestPath,
     claudeManifestPath,
     sharedMcpPath,
     claudeMcpPath,
+    portableManifestPath,
+    portableMcpPath,
     path.join(resolved, 'skills'),
   ]) {
     try {
@@ -161,10 +272,49 @@ async function validatePlugin(name, source) {
   const claudeManifest = await readJson(claudeManifestPath);
   const sharedMcp = await readJson(sharedMcpPath);
   const claudeMcp = await readJson(claudeMcpPath);
+  const portableManifest = await readJson(portableManifestPath);
+  const portableMcp = await readJson(portableMcpPath);
+  for (const [component, value] of [
+    ['plugin', portableManifest],
+    ['mcp', portableMcp],
+  ]) {
+    const validate = portableSchemas[component];
+    if (!validate(value)) {
+      fail(
+        `${name} ${component}.json schema: ${ajv.errorsText(validate.errors)}`,
+      );
+    }
+  }
   const endpoint = name.includes('operator') ? 'operator' : 'contributor';
   const expectedUrl = `${productionSiteUrl}/mcp/${endpoint}`;
-  if (codexManifest.name !== name || claudeManifest.name !== name) {
+  if (
+    codexManifest.name !== name ||
+    claudeManifest.name !== name ||
+    portableManifest.name !== name
+  ) {
     fail(`${name} host manifests must use the marketplace plugin name`);
+  }
+  if (
+    typeof portableManifest.version !== 'string' ||
+    !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(portableManifest.version) ||
+    portableManifest.version !== claudeManifest.version ||
+    typeof codexManifest.version !== 'string' ||
+    codexManifest.version?.split('+')[0] !== portableManifest.version
+  ) {
+    fail(`${name} manifest versions must agree before Codex build metadata`);
+  }
+  if (
+    typeof portableManifest.description !== 'string' ||
+    !portableManifest.description.trim() ||
+    portableManifest.description !== claudeManifest.description ||
+    portableManifest.description !== codexManifest.description ||
+    !portableManifest.author?.name?.trim() ||
+    !isDeepStrictEqual(portableManifest.author, claudeManifest.author) ||
+    !isDeepStrictEqual(portableManifest.author, codexManifest.author)
+  ) {
+    fail(
+      `${name} manifest descriptions and authors must agree and be non-empty`,
+    );
   }
   if (
     typeof codexManifest.mcpServers !== 'object' ||
@@ -176,59 +326,109 @@ async function validatePlugin(name, source) {
   if (claudeManifest.mcpServers !== './.claude-plugin/mcp.json') {
     fail(`${name} Claude manifest must point to its host MCP adapter`);
   }
+  if (codexManifest.skills !== './skills/') {
+    fail(`${name} Codex manifest must point to the shared skills directory`);
+  }
 
   assertDiscoveredMcpServers(
     sharedMcp.mcpServers,
     `${name} shared`,
     expectedUrl,
+    name,
   );
   assertDiscoveredMcpServers(
     codexManifest.mcpServers,
     `${name} Codex`,
     expectedUrl,
+    name,
   );
   assertDiscoveredMcpServers(
     claudeMcp.mcpServers,
     `${name} Claude`,
     expectedUrl,
+    name,
+  );
+  assertDiscoveredMcpServers(
+    portableMcp.mcpServers,
+    `${name} portable`,
+    expectedUrl,
+    name,
+    'streamable-http',
   );
   await assertNoSymlinks(resolved);
+  return validateSkills(resolved, name, expectedUrl);
 }
 
-const marketplaces = {
-  codex: await readJson(marketplacePaths.codex),
-  claude: await readJson(marketplacePaths.claude),
-};
-const entries = {
-  codex: collectEntries(marketplaces.codex, 'codex'),
-  claude: collectEntries(marketplaces.claude, 'claude'),
-};
+export async function validatePluginMarketplaces(root = repositoryRoot) {
+  const pluginRoot = path.join(root, 'plugins');
+  const marketplacePaths = {
+    codex: path.join(root, '.agents/plugins/marketplace.json'),
+    claude: path.join(root, '.claude-plugin/marketplace.json'),
+  };
+  const marketplaces = {
+    codex: await readJson(marketplacePaths.codex),
+    claude: await readJson(marketplacePaths.claude),
+  };
+  const entries = {
+    codex: collectEntries(marketplaces.codex, 'codex'),
+    claude: collectEntries(marketplaces.claude, 'claude'),
+  };
 
-const codexNames = [...entries.codex.keys()].sort();
-const claudeNames = [...entries.claude.keys()].sort();
-if (JSON.stringify(codexNames) !== JSON.stringify(claudeNames)) {
-  fail('Codex and Claude marketplaces must list the same plugin names');
-}
-for (const name of codexNames) {
-  if (entries.codex.get(name) !== entries.claude.get(name)) {
-    fail(`Codex and Claude sources for ${name} must match`);
+  const codexNames = [...entries.codex.keys()].sort();
+  const claudeNames = [...entries.claude.keys()].sort();
+  if (JSON.stringify(codexNames) !== JSON.stringify(claudeNames)) {
+    fail('Codex and Claude marketplaces must list the same plugin names');
   }
-  await validatePlugin(name, entries.codex.get(name));
+  const skills = {};
+  for (const name of codexNames) {
+    if (entries.codex.get(name) !== entries.claude.get(name)) {
+      fail(`Codex and Claude sources for ${name} must match`);
+    }
+    skills[name] = await validatePlugin(name, entries.codex.get(name), root);
+    const claudeEntry = marketplaces.claude.plugins.find(
+      (entry) => entry.name === name,
+    );
+    const claudeManifest = await readJson(
+      path.join(root, entries.claude.get(name), '.claude-plugin/plugin.json'),
+    );
+    if (
+      claudeEntry.version !== claudeManifest.version ||
+      !isDeepStrictEqual(claudeEntry.author, claudeManifest.author)
+    ) {
+      fail(
+        `${name} Claude marketplace version and author must match its manifest`,
+      );
+    }
+  }
+
+  if (
+    codexNames.length !== allowedPluginSet.size ||
+    codexNames.some((name) => !allowedPluginSet.has(name))
+  ) {
+    fail('public marketplaces must list exactly the production plugin set');
+  }
+
+  const pluginDirectories = (await readdir(pluginRoot, { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+  if (JSON.stringify(pluginDirectories) !== JSON.stringify(codexNames)) {
+    fail(
+      'public plugins directory must contain exactly the marketplace plugins',
+    );
+  }
+
+  return skills;
 }
 
 if (
-  codexNames.length !== allowedPluginSet.size ||
-  codexNames.some((name) => !allowedPluginSet.has(name))
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  fail('public marketplaces must list exactly the production plugin set');
+  const skills = await validatePluginMarketplaces();
+  console.log(
+    `Plugin marketplace validation passed: ${Object.entries(skills)
+      .map(([name, names]) => `${name} (${names.length} skills)`)
+      .join(', ')}`,
+  );
 }
-
-const pluginDirectories = (await readdir(pluginRoot, { withFileTypes: true }))
-  .filter((entry) => entry.isDirectory())
-  .map((entry) => entry.name)
-  .sort();
-if (JSON.stringify(pluginDirectories) !== JSON.stringify(codexNames)) {
-  fail('public plugins directory must contain exactly the marketplace plugins');
-}
-
-console.log(`Plugin marketplace validation passed: ${codexNames.join(', ')}`);

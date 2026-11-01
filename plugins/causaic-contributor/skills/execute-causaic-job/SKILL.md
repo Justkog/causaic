@@ -21,7 +21,7 @@ Use the contributor MCP connection and the authenticated user’s ownership. Rea
 
 ## Attach local files
 
-Files supplement the required JSON artifact. An artifact may have at most 10 attachments and 100 MiB in total. The host needs access to the local files and an HTTP transfer capability. Local Codex and Claude hosts can perform this flow when those capabilities are granted. If either capability is unavailable, report that limitation; do not encode bytes in MCP, substitute an unrelated hosting service, or silently omit requested files.
+Files supplement the required JSON artifact. An artifact may have at most 10 attachments and 100 MiB in total. The host needs access to the local files and an HTTP transfer capability. Use those capabilities only when granted in the current host. If either capability is unavailable, report that limitation; do not encode bytes in MCP, substitute an unrelated hosting service, or silently omit requested files.
 
 For each file, while the run is `running` and its lease is active:
 

@@ -1,0 +1,39 @@
+[
+  {
+    "scenario": "start requires the user's actual decision",
+    "tool": "opportunity_begin",
+    "requiredInstructions": [
+      "The first call must not acquire work.",
+      "the user’s `accept`, `decline`, or `cancel` decision",
+      "Never manufacture consent.",
+      "Decline and cancel are terminal and must not execute the contribution."
+    ]
+  },
+  {
+    "scenario": "accepted start replays the original business request",
+    "tool": "opportunity_begin",
+    "requiredInstructions": [
+      "retry the same `opportunity_begin` business request with `interactionResponse`",
+      "Reuse a request ID only to retry identical arguments"
+    ]
+  },
+  {
+    "scenario": "artifact submission uses the user's decision and unchanged arguments",
+    "tool": "artifact_submit",
+    "requiredInstructions": [
+      "Present the exact returned artifact proposal, including ordered attachment descriptors, to the user.",
+      "retry the identical `artifact_submit` business request, including attachment order, with `interactionResponse`",
+      "the user’s `accept`, `decline`, or `cancel` decision",
+      "Acceptance links the selected uploads, submits the artifact, consumes consent, and completes the contribution atomically.",
+      "Decline/cancel schedules cleanup only for the proposed uploads",
+      "Do not reuse declined or cancelled submission requests."
+    ]
+  },
+  {
+    "scenario": "host consent UI is not assumed from fallback decisions",
+    "tool": "opportunity_begin / artifact_submit",
+    "requiredInstructions": [
+      "Do not claim that agent-reported fallback consent proves a host displayed a consent interface."
+    ]
+  }
+]

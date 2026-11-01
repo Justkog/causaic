@@ -1,15 +1,33 @@
 # Causaic agent plugins
 
 This repository contains the public Causaic contributor and operator plugins
-for Codex and Claude Code. Both plugins connect to the production Causaic MCP
+for Codex, Claude Code, and hosts supporting portable Agent Plugins v1 packages.
+Both plugins target the production Causaic MCP
 deployment through OAuth protected-resource and authorization-server discovery.
+Hermes package installation and component discovery are tested; authenticated
+Hermes use has the limitation described below.
 
 ## Install from GitHub
+
+In Hermes CLI:
+
+```bash
+hermes plugins install 'Justkog/causaic#plugins/causaic-contributor'
+hermes plugins install 'Justkog/causaic#plugins/causaic-operator'
+hermes plugins enable causaic-contributor
+hermes plugins enable causaic-operator
+hermes plugins list --no-bundled
+```
+
+Portable packages install disabled. Installation and enablement do not authorize
+a Causaic account. Disable either package independently with
+`hermes plugins disable <plugin-name>`; re-enable with the corresponding enable
+command. Start a new session after changing plugin state.
 
 In Codex:
 
 ```bash
-codex plugin marketplace add causaic/causaic
+codex plugin marketplace add Justkog/causaic
 codex plugin add causaic-contributor@causaic
 codex plugin add causaic-operator@causaic
 ```
@@ -17,7 +35,7 @@ codex plugin add causaic-operator@causaic
 In Claude Code:
 
 ```text
-/plugin marketplace add causaic/causaic
+/plugin marketplace add Justkog/causaic
 /plugin install causaic-contributor@causaic
 /plugin install causaic-operator@causaic
 ```
@@ -51,13 +69,28 @@ Authenticate the contributor plugin first and verify a harmless read such as
 `causes_list_discoverable`. Authenticate the operator plugin with the same
 Clerk account and verify `causes_list_managed`.
 
-## Public plugin checks
+### Hermes authentication limitation
 
-From the repository root:
+Hermes **v0.22.5** loads the packages' Streamable HTTP connections, but its
+portable adapter does not enable OAuth for them. The
+`hermes mcp login causaic-contributor` command returns
+`Server 'causaic-contributor' not found in config.` because it only looks at
+native `config.yaml` servers. The same restriction applies to operator.
 
-```bash
-pnpm plugins:check
-```
+There is no verified plugin-only authentication procedure for this version.
+Authenticated Hermes tool discovery and Causaic operations remain unverified.
+Adding a native server with `hermes mcp add` overrides the bundled connection;
+it does not establish support for plugin-provided authentication. Do not add
+tokens or OAuth client settings to the packages.
 
-The check validates both marketplace manifests, the two self-contained plugin
-bundles, production MCP URLs, and URL-only OAuth configuration.
+### Contributor consent
+
+OAuth consent does not approve contribution start, artifact submission, or
+consequential operator actions. Each proposal requires the user's actual
+decision. Declining or cancelling a proposal must not perform the proposed action.
+
+Live contributor execution, fallback interaction replay, and attachments remain
+unverified in Hermes.
+
+For package checks, compatibility records, and release procedures, see
+[Plugin validation and maintenance](plugin-validation.md).
