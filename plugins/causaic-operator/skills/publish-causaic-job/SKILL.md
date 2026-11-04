@@ -1,6 +1,6 @@
 ---
 name: publish-causaic-job
-description: Use the Causaic operator MCP to configure and publish manual or input-driven Causaic work through its cause, workflow, campaign, and workstream prerequisites. Prefer dataset-backed input inventory when creating new contributor work; use manual jobs when the work is not naturally itemized. Trigger when a user wants to create contributor work or make it available.
+description: Use the Causaic operator MCP to configure and publish manual or input-driven Causaic work, including several independent jobs per input. Prefer dataset-backed inventory when work is itemized. Trigger when a user wants to create contributor work or make it available.
 ---
 
 # Publish Causaic contributor work
@@ -9,6 +9,19 @@ For new contributor inventory, prefer an `input_driven` workstream backed by a
 dataset source. It keeps source items, mapping, and generated opportunities
 separate from concrete jobs. Use manual jobs as the fallback for work that
 cannot be represented as input items.
+
+For several independent jobs from the same source item, set
+`inventoryPolicy.maxJobsPerInput` in `workstream_create` rather than duplicating
+inputs. The default is 1; limits must be integers from 1 to 10,000. Each
+`generation_inputs_ingest` item may specify a custom `maxJobs`; omission inherits
+the workstream default, including subsequent increases. Explicit overrides
+remain fixed, and reimporting a source item does not edit its cap.
+
+The cap counts jobs created, not accepted results or claim attempts. Every job
+retains its own `requiredAcceptedRuns` target and execution lifecycle; reassigning
+an existing job consumes no additional slot. Existing participation settings
+govern contributor limits, so multiple jobs do not by themselves guarantee
+distinct contributors.
 
 Guide this sequence while re-reading each projection after a mutation:
 
@@ -23,3 +36,7 @@ Guide this sequence while re-reading each projection after a mutation:
 6. Use `jobs_list_managed` and `job_get_managed` for manual jobs or materialized input-backed jobs. For input-driven inventory, use the generation-input tools to verify readiness and rely on contributor opportunity discovery for the generated candidate inventory.
 
 Drafts are editable only in permitted states. Published jobs and workflow pins are immutable. Publication must be blocked for invalid input, expired availability, inactive campaign/workstream, unavailable workflow versions, inventory violations, unsafe active-run state, or any other backend rejection. Never pass a caller-selected operator or cause ID.
+
+For later cap edits, inheritance resets, related-job inspection, or failed limit
+synchronization, use `$manage-causaic-work`. Cap edits require a draft or paused
+workstream, and limit synchronization must finish before activation/resume.

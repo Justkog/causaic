@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   GenerationInputBatchSchema,
+  GenerationInputJobLimitSchema,
   GenerationInputIntakeSchema,
   GenerationInputInventoryCountsSchema,
   GenerationInputSourceSchema,
@@ -20,6 +21,31 @@ import {
 } from './campaign-workstreams.js';
 
 describe('input-driven workstream contracts', () => {
+  it('validates workstream defaults and per-item overrides without requiring them on legacy callers', () => {
+    for (const value of [0, -1, 1.5, 10_001, Infinity, NaN])
+      expect(GenerationInputJobLimitSchema.safeParse(value).success).toBe(
+        false,
+      );
+    for (const value of [1, 10_000])
+      expect(GenerationInputJobLimitSchema.safeParse(value).success).toBe(true);
+    expect(
+      InputDrivenInventoryPolicySchema.parse({
+        ...validInputDrivenInventoryPolicyFixture,
+        maxJobsPerInput: 3,
+      }).maxJobsPerInput,
+    ).toBe(3);
+    expect(
+      GenerationInputBatchSchema.parse({
+        requestId: 'limits',
+        sourceId: 'source',
+        items: [
+          { sourceItemKey: 'one', payload: {}, maxJobs: 5 },
+          { sourceItemKey: 'two', payload: {} },
+        ],
+      }).items.map((item) => item.maxJobs),
+    ).toEqual([5, undefined]);
+  });
+
   it('accepts all supported input source families', () => {
     const sources = [
       { type: 'dataset', sourceId: 'dataset_fixture' },

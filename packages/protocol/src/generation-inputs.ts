@@ -14,6 +14,12 @@ export const MAX_GENERATION_SOURCE_ID_LENGTH = 256;
 export const MAX_GENERATION_SOURCE_ITEM_KEY_LENGTH = 512;
 export const MAX_GENERATION_MAPPING_ASSIGNMENTS = 64;
 export const MAX_GENERATION_INPUT_BATCH_SIZE = 100;
+export const MAX_JOBS_PER_GENERATION_INPUT = 10_000;
+export const GenerationInputJobLimitSchema = z
+  .number()
+  .int()
+  .min(1)
+  .max(MAX_JOBS_PER_GENERATION_INPUT);
 
 export const GenerationSourceIdSchema = z
   .string()
@@ -174,6 +180,7 @@ export type GenerationJobMapping = z.infer<typeof GenerationJobMappingSchema>;
 export const InputDrivenInventoryPolicySchema = z
   .object({
     type: z.literal('input_driven'),
+    maxJobsPerInput: GenerationInputJobLimitSchema.optional(),
     source: GenerationInputSourceSchema,
     mapping: GenerationJobMappingSchema,
   })
@@ -239,6 +246,7 @@ export const GenerationInputInventoryCountsSchema = z
   .object({
     ready: InventoryCountSchema,
     materialized: InventoryCountSchema,
+    materializedJobs: InventoryCountSchema.optional(),
     skipped: InventoryCountSchema,
     failed: InventoryCountSchema,
     total: InventoryCountSchema.optional(),
@@ -251,6 +259,7 @@ export type GenerationInputInventoryCounts = z.infer<
 export const GenerationInputBatchItemSchema = z
   .object({
     sourceItemKey: GenerationSourceItemKeySchema,
+    maxJobs: GenerationInputJobLimitSchema.optional(),
     payload: JsonValueSchema,
     provenance: JsonValueSchema.optional(),
   })
