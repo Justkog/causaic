@@ -5,5 +5,7 @@
   "author": {
     "name": "Causaic"
   },
+  "icon": "./.claude-plugin/icon.png",
+  "privacyPolicyUrl": "https://causaic.org/privacy",
   "mcpServers": "./.claude-plugin/mcp.json"
 }
